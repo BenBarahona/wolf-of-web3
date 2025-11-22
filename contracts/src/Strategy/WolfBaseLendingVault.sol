@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC20, IERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import {ERC4626} from "openzeppelin-contracts/token/ERC20/extensions/ERC4626.sol";
-import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
-import {Pausable} from "openzeppelin-contracts/security/Pausable.sol";
+import {ERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import {ERC4626} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol";
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /// @title Wolf Base Lending Vault (Arc)
-/// @notice ERC4626 vault over USDC on Arc with simple lending-like behavior, cooldown, TVL cap and pause controls.
-/// @dev Concrete strategies (Low/Medium/High) should inherit this contract and configure the cooldown in the constructor.
-contract WolfBaseLendingVault is ERC4626, Ownable, Pausable {
+/// @notice ERC4626 vault over USDC on Arc with simple lending-like behavior, cooldown and TVL cap.
+/// @dev Concrete strategies (Low/Medium/High) can inherit this contract and configure cooldown in the constructor.
+contract WolfBaseLendingVault is ERC4626, Ownable {
     /// @notice Cooldown in seconds before a user can withdraw after their last deposit (0 = no cooldown).
     uint48 public immutable cooldown;
 
@@ -71,16 +70,6 @@ contract WolfBaseLendingVault is ERC4626, Ownable, Pausable {
         emit MaxTotalAssetsUpdated(old, newMax);
     }
 
-    /// @notice Pause deposits and withdrawals in case of emergency.
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /// @notice Unpause deposits and withdrawals.
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
     /*//////////////////////////////////////////////////////////////
                     ERC4626 OVERRIDES: DEPOSIT / WITHDRAW
     //////////////////////////////////////////////////////////////*/
@@ -91,7 +80,7 @@ contract WolfBaseLendingVault is ERC4626, Ownable, Pausable {
         address receiver,
         uint256 assets,
         uint256 shares
-    ) internal override whenNotPaused {
+    ) internal override {
         // Enforce TVL cap if configured
         uint256 cap = maxTotalAssets;
         if (cap != 0) {
@@ -116,7 +105,7 @@ contract WolfBaseLendingVault is ERC4626, Ownable, Pausable {
         address owner_,
         uint256 assets,
         uint256 shares
-    ) internal override whenNotPaused {
+    ) internal override {
         uint48 cd = cooldown;
 
         // Apply cooldown constraint only if a non-zero cooldown is configured
@@ -141,10 +130,11 @@ contract WolfBaseLendingVault is ERC4626, Ownable, Pausable {
     ///      When more USDC enters the vault, totalAssets() increases and the price per share goes up,
     ///      effectively distributing yield to existing depositors.
     /// @param amount Amount of USDC to transfer from msg.sender to the vault.
-    function accrueYield(uint256 amount) external onlyOwner whenNotPaused {
+    function accrueYield(uint256 amount) external onlyOwner {
         require(amount > 0, "amount = 0");
 
-        IERC20 usdc = asset();
+        IERC20 usdc = IERC20(asset()); // 👈 cast explícito
+
         bool ok = usdc.transferFrom(msg.sender, address(this), amount);
         require(ok, "USDC transfer failed");
 
