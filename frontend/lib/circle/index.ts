@@ -10,6 +10,7 @@ export {
   useWalletBalance,
   useRestorePin,
   useTransaction,
+  useSocialLogin,
 } from './hooks';
 export type {
   CircleConfig,

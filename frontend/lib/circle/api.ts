@@ -65,6 +65,27 @@ export async function loginUser(email: string): Promise<{
   return result.data;
 }
 
+export async function createSocialLoginToken(deviceId: string): Promise<{
+  deviceToken: string;
+  deviceEncryptionKey: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/wallet/user/social/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ deviceId }),
+  });
+  
+  const result = await response.json();
+  
+  if (!result.success) {
+    throw new Error(result.message || 'Failed to create social login token');
+  }
+  
+  return result.data;
+}
+
 export async function acquireSessionToken(userId: string) {
   const response = await fetch(`${API_BASE_URL}/api/wallet/user/token`, {
     method: 'POST',

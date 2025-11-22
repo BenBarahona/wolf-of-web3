@@ -275,7 +275,6 @@ yarn add pg
 
 ## Related Documentation
 
-- [QUICKSTART_DATABASE.md](./QUICKSTART_DATABASE.md) - Database setup guide
-- [DATABASE_SETUP.md](./DATABASE_SETUP.md) - Detailed database docs
-- [CIRCLE_INTEGRATION.md](./CIRCLE_INTEGRATION.md) - Circle wallet integration
-- [QUICKSTART.md](./QUICKSTART.md) - General quickstart guide
+- [DATABASE_SETUP.md](./DATABASE_SETUP.md) - Database setup & reference
+- [QUICKSTART.md](./QUICKSTART.md) - Circle wallet quickstart
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture

@@ -22,6 +22,7 @@ interface CircleContextType {
     callback?: (error: any, result?: ChallengeResult) => void
   ) => void;
   clearSession: () => void;
+  deviceId: string | null;
 }
 
 const CircleContext = createContext<CircleContextType>({
@@ -32,6 +33,7 @@ const CircleContext = createContext<CircleContextType>({
   setUserSession: () => {},
   executeChallenge: () => {},
   clearSession: () => {},
+  deviceId: null,
 });
 
 export const useCircle = () => {
@@ -50,6 +52,7 @@ export function CircleProvider({ children }: CircleProviderProps) {
   const [sdk, setSdk] = useState<W3SSdk | null>(null);
   const [appId, setAppId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
   const [userSession, setUserSessionState] = useState<UserSession | null>(
     () => {
       // Try to load session from localStorage on mount
@@ -73,11 +76,62 @@ export function CircleProvider({ children }: CircleProviderProps) {
         const config = await getCircleConfig();
         setAppId(config.appId);
 
-        const sdkInstance = new W3SSdk({
+        // Get stored device token and encryption key for social logins
+        const deviceToken =
+          typeof window !== "undefined"
+            ? localStorage.getItem("deviceToken")
+            : null;
+        const deviceEncryptionKey =
+          typeof window !== "undefined"
+            ? localStorage.getItem("deviceEncryptionKey")
+            : null;
+
+        const sdkConfig: any = {
           appSettings: {
             appId: config.appId,
           },
-        });
+        };
+
+        const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+        const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+        if (deviceToken && deviceEncryptionKey) {
+          sdkConfig.loginConfigs = {
+            deviceToken,
+            deviceEncryptionKey,
+          };
+
+          if (facebookAppId) {
+            sdkConfig.loginConfigs.facebook = {
+              appId: facebookAppId,
+              redirectUri:
+                typeof window !== "undefined" ? window.location.origin : "",
+            };
+          }
+
+          if (googleClientId) {
+            sdkConfig.loginConfigs.google = {
+              clientId: googleClientId,
+              redirectUri:
+                typeof window !== "undefined" ? window.location.origin : "",
+            };
+          }
+        }
+
+        const sdkInstance = new W3SSdk(sdkConfig);
+
+        if (sdkInstance.getDeviceId) {
+          try {
+            const id = await sdkInstance.getDeviceId();
+            setDeviceId(id);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("deviceId", id);
+            }
+            console.log("Device ID retrieved:", id);
+          } catch (error) {
+            console.error("Failed to get device ID:", error);
+          }
+        }
 
         setSdk(sdkInstance);
         setIsInitialized(true);
@@ -161,6 +215,7 @@ export function CircleProvider({ children }: CircleProviderProps) {
     setUserSession,
     executeChallenge,
     clearSession,
+    deviceId,
   };
 
   return (

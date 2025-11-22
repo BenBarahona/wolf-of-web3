@@ -351,3 +351,143 @@ export function useTransaction() {
   return { sendTransaction, loading, error };
 }
 
+/**
+ * Hook for social login (Facebook, Google, Apple)
+ */
+export function useSocialLogin() {
+  const { sdk, deviceId, setUserSession } = useCircle();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const initializeSocialLogin = useCallback(async () => {
+    if (!deviceId) {
+      throw new Error('Device ID not available. SDK not initialized.');
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { deviceToken, deviceEncryptionKey } = await circleApi.createSocialLoginToken(deviceId);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('deviceToken', deviceToken);
+        localStorage.setItem('deviceEncryptionKey', deviceEncryptionKey);
+      }
+
+      return { deviceToken, deviceEncryptionKey };
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to initialize social login';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [deviceId]);
+
+  
+  const loginWithFacebook = useCallback(async (): Promise<boolean> => {
+    if (!sdk) {
+      throw new Error('SDK not initialized');
+    }
+
+    if (!sdk.performLogin) {
+      throw new Error('Social login not supported by SDK version');
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        (sdk.performLogin as any)('facebook', (error: any, result: any) => {
+          if (error) {
+            setLoading(false);
+            const errorMessage = error.message || 'Facebook login failed';
+            console.error('Facebook login error:', error);
+            setError(errorMessage);
+            reject(new Error(errorMessage));
+            return;
+          }
+
+          setLoading(false);
+          console.log('Facebook login successful:', result);
+
+          if (result?.userToken && result?.encryptionKey) {
+            setUserSession({
+              userId: result.userId || '',
+              userToken: result.userToken,
+              encryptionKey: result.encryptionKey,
+              challengeId: result.challengeId || '',
+              refreshToken: result.refreshToken,
+            });
+          }
+
+          resolve(true);
+        });
+      } catch (err: any) {
+        setLoading(false);
+        const errorMessage = err.message || 'Failed to initiate Facebook login';
+        setError(errorMessage);
+        reject(err);
+      }
+    });
+  }, [sdk, setUserSession]);
+
+  const loginWithGoogle = useCallback(async (): Promise<boolean> => {
+    if (!sdk) {
+      throw new Error('SDK not initialized');
+    }
+
+    if (!sdk.performLogin) {
+      throw new Error('Social login not supported by SDK version');
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        (sdk.performLogin as any)('google', (error: any, result: any) => {
+          if (error) {
+            setLoading(false);
+            const errorMessage = error.message || 'Google login failed';
+            console.error('Google login error:', error);
+            setError(errorMessage);
+            reject(new Error(errorMessage));
+            return;
+          }
+
+          setLoading(false);
+          console.log('Google login successful:', result);
+
+          if (result?.userToken && result?.encryptionKey) {
+            setUserSession({
+              userId: result.userId || '',
+              userToken: result.userToken,
+              encryptionKey: result.encryptionKey,
+              challengeId: result.challengeId || '',
+              refreshToken: result.refreshToken,
+            });
+          }
+
+          resolve(true);
+        });
+      } catch (err: any) {
+        setLoading(false);
+        const errorMessage = err.message || 'Failed to initiate Google login';
+        setError(errorMessage);
+        reject(err);
+      }
+    });
+  }, [sdk, setUserSession]);
+
+  return {
+    initializeSocialLogin,
+    loginWithFacebook,
+    loginWithGoogle,
+    loading,
+    error,
+  };
+}
+

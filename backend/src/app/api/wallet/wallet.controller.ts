@@ -190,6 +190,44 @@ export class WalletController {
     }
   }
 
+  @Post('user/social/token')
+  async createSocialLoginToken(
+    @Body() body: { deviceId: string },
+  ): Promise<{
+    success: boolean;
+    data: {
+      deviceToken: string;
+      deviceEncryptionKey: string;
+    };
+  }> {
+    try {
+      if (!body.deviceId) {
+        throw new HttpException('Device ID is required', HttpStatus.BAD_REQUEST);
+      }
+
+      this.logger.log(`Creating social login token for deviceId: ${body.deviceId}`);
+
+      const result = await this.circleService.createDeviceTokenForSocialLogin(
+        body.deviceId,
+      );
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error: any) {
+      this.logger.error('Error creating social login token:', error);
+
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to create social login token',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Post('user/token')
   async acquireToken(@Body() body: AcquireTokenDto) {
     try {

@@ -61,6 +61,11 @@ Create `frontend/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_CIRCLE_APP_ID=your_circle_app_id
+
+# Optional: Enable social login
+NEXT_PUBLIC_FACEBOOK_APP_ID=your_facebook_app_id
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
 ## 🎯 Available Commands
@@ -98,10 +103,8 @@ See [SCRIPTS.md](./SCRIPTS.md) for complete command reference.
 ## 📚 Documentation
 
 - **[SCRIPTS.md](./SCRIPTS.md)** - Complete command reference
-- **[QUICKSTART.md](./QUICKSTART.md)** - Detailed quickstart guide
-- **[QUICKSTART_DATABASE.md](./QUICKSTART_DATABASE.md)** - Database setup
-- **[DATABASE_SETUP.md](./DATABASE_SETUP.md)** - Database documentation
-- **[CIRCLE_INTEGRATION.md](./CIRCLE_INTEGRATION.md)** - Circle wallet docs
+- **[QUICKSTART.md](./QUICKSTART.md)** - Circle wallet quickstart
+- **[DATABASE_SETUP.md](./DATABASE_SETUP.md)** - Database setup & reference
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture
 
 ## 🏗️ Project Structure
@@ -129,6 +132,7 @@ wolf-of-web3/
 
 - User-controlled Circle wallets
 - PIN-based authentication
+- **Social login (Facebook & Google)** 🆕
 - Smart Contract Accounts (SCA)
 - Wallet creation flow
 - User database with Circle mapping
@@ -215,23 +219,4 @@ cd backend && yarn add pg
 
 See [DATABASE_SETUP.md](./DATABASE_SETUP.md) for details.
 
-## 🤝 Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Run tests: `yarn test`
-4. Submit a pull request
-
 ## 📄 License
-
-[Your License Here]
-
-## 🆘 Support
-
-- **Issues**: GitHub Issues
-- **Docs**: See documentation links above
-- **Circle Support**: [Circle Developer Console](https://console.circle.com/)
-
----
-
-**Built with ❤️ using Circle, NestJS, and Next.js**

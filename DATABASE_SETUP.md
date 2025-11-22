@@ -1,22 +1,55 @@
 # Database Setup Guide
 
-## Quick Start with Docker
+## 🚀 Quick Start (2 Minutes)
 
-### 1. Start the Database
+### One-Command Setup
 
 ```bash
-# Recommended script (does everything + validations)
+# From project root - this does everything!
 yarn db:start
-
-# using docker directly
-docker-compose up -d
-
-# Check if containers are running
-yarn db:status
-# or: docker-compose ps
 ```
 
-### 2. Configure Environment Variables
+This command automatically:
+
+- ✅ Starts PostgreSQL, Redis, and pgAdmin with Docker
+- ✅ Installs the PostgreSQL driver (`pg`)
+- ✅ Creates the database
+
+### Start Your Backend
+
+```bash
+cd backend
+yarn dev
+```
+
+The backend will automatically:
+
+- ✅ Connect to PostgreSQL
+- ✅ Create all tables
+- ✅ Synchronize the schema
+
+**You're ready to go!** Jump to [Services](#services) to see what's running, or continue reading for detailed documentation.
+
+---
+
+## Manual Setup (Alternative)
+
+If you prefer step-by-step control:
+
+### 1. Start Docker Services
+
+```bash
+docker-compose up -d
+```
+
+### 2. Install PostgreSQL Driver
+
+```bash
+cd backend
+yarn add pg
+```
+
+### 3. Configure Environment Variables
 
 Add these variables to your `backend/.env` file:
 
@@ -30,25 +63,12 @@ DATABASE_PASSWORD=wolf_password
 DATABASE_NAME=wolf_of_web3
 ```
 
-### 3. Install PostgreSQL Driver
-
-```bash
-cd backend
-yarn add pg
-```
-
 ### 4. Start the Backend
 
 ```bash
 cd backend
 yarn dev
 ```
-
-The backend will automatically:
-
-- Connect to PostgreSQL
-- Create all tables
-- Synchronize the schema
 
 ## Services
 
@@ -179,22 +199,18 @@ docker-compose logs -f  # Follow mode
 ## Production Considerations
 
 1. **Change Default Passwords**
-
    - Update database credentials in `docker-compose.yml`
    - Update pgAdmin password
 
 2. **Use Migrations**
-
    - Set `synchronize: false` in production
    - Use TypeORM migrations: `yarn typeorm migration:generate`
 
 3. **Environment Variables**
-
    - Never commit `.env` files
    - Use secrets management (AWS Secrets Manager, etc.)
 
 4. **Backups**
-
    - Set up automated PostgreSQL backups
    - Store backups in S3 or similar
 

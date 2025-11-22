@@ -148,6 +148,46 @@ export class CircleService {
       );
     }
   }
+  
+  async createDeviceTokenForSocialLogin(deviceId: string): Promise<{
+    deviceToken: string;
+    deviceEncryptionKey: string;
+  }> {
+    try {
+      this.logger.log(`Creating device token for social login with deviceId: ${deviceId}`);
+
+      const response = await axios.post(
+        `${this.baseUrl}/users/social/token`,
+        {
+          idempotencyKey: uuidv4(),
+          deviceId: deviceId,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
+      );
+
+      const data = response.data.data;
+      this.logger.log('Device token created successfully for social login');
+      this.logger.debug('Device token response:', JSON.stringify(data, null, 2));
+
+      return {
+        deviceToken: data.deviceToken,
+        deviceEncryptionKey: data.deviceEncryptionKey,
+      };
+    } catch (error: any) {
+      this.logger.error(
+        'Error creating device token for social login:',
+        error.response?.data || error,
+      );
+      throw new Error(
+        `Failed to create device token for social login: ${error.response?.data?.message || error.message}`,
+      );
+    }
+  }
 
   async initializeUser(
     userToken: string,

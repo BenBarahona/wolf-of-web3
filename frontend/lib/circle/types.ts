@@ -9,6 +9,7 @@ export interface UserSession {
   userToken: string;
   encryptionKey: string;
   challengeId: string;
+  refreshToken?: string;
 }
 
 export interface WalletInfo {
