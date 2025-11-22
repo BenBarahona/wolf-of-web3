@@ -31,14 +31,14 @@ cat > .env << EOF
 CIRCLE_API_KEY=your_api_key_here
 CIRCLE_APP_ID=your_app_id_here
 CIRCLE_ENTITY_SECRET=your_entity_secret_here
-PORT=4000
+PORT=3001
 EOF
 
 # Start the backend
 yarn dev
 ```
 
-Backend will run on `http://localhost:4000`
+Backend will run on `http://localhost:3001`
 
 ## Step 3: Setup Frontend
 
@@ -52,7 +52,7 @@ yarn install
 
 # Create .env.local file
 cat > .env.local << EOF
-NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_API_URL=http://localhost:3001
 EOF
 
 # Start the frontend
@@ -140,7 +140,7 @@ Check out `CIRCLE_INTEGRATION.md` for:
 ### "Failed to initialize Circle SDK"
 
 - Check that your `CIRCLE_APP_ID` is correct
-- Verify backend is running on port 4000
+- Verify backend is running on port 3001
 - Check browser console for detailed errors
 
 ### "Failed to create user"
@@ -159,7 +159,7 @@ Check out `CIRCLE_INTEGRATION.md` for:
 
 - Make sure backend is running
 - Check `NEXT_PUBLIC_API_URL` in frontend `.env.local`
-- Verify ports match (4000 for backend, 3000 for frontend)
+- Verify ports match (3001 for backend, 3000 for frontend)
 
 ## API Endpoints
 
@@ -179,10 +179,10 @@ Your backend now has these endpoints:
 
 ```bash
 # Test backend is running
-curl http://localhost:4000/api/wallet/config
+curl http://localhost:3001/api/wallet/config
 
 # Create a new user
-curl -X POST http://localhost:4000/api/wallet/user/create \
+curl -X POST http://localhost:3001/api/wallet/user/create \
   -H "Content-Type: application/json" \
   -d '{}'
 ```

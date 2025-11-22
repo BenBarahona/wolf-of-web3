@@ -215,7 +215,7 @@ CIRCLE_ENTITY_SECRET=your_entity_secret
 2. **Frontend** (`frontend/.env.local`):
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 ## Troubleshooting
@@ -225,7 +225,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 ```bash
 # Check what's using the port
 lsof -i :5432  # PostgreSQL
-lsof -i :4000  # Backend
+lsof -i :3001  # Backend
 lsof -i :3000  # Frontend
 
 # Stop local PostgreSQL if installed

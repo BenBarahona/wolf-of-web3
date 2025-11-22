@@ -51,7 +51,7 @@ CIRCLE_APP_ID=your_app_id
 CIRCLE_ENTITY_SECRET=your_entity_secret
 
 # Server
-PORT=4000
+PORT=3001
 NODE_ENV=development
 ```
 
@@ -60,7 +60,7 @@ NODE_ENV=development
 Create `frontend/.env.local`:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_CIRCLE_APP_ID=your_circle_app_id
 
 # Optional: Enable social login
