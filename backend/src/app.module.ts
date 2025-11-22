@@ -10,6 +10,7 @@ import { X402Module } from './services/x402/x402.module';
 import { AgentModule } from './app/api/agent/agent.module';
 import { StrategyModule } from './app/api/strategy/strategy.module';
 import { X402TestModule } from './app/api/x402-test/x402-test.module';
+import { PaymentsModule } from './app/api/payments/payments.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { X402TestModule } from './app/api/x402-test/x402-test.module';
     AgentModule,
     StrategyModule,
     X402TestModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

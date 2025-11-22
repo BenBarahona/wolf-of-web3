@@ -21,6 +21,8 @@ async function bootstrap() {
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
-  await app.listen(process.env.PORT ?? isProd ? 5003 : 5000);
+  const port = 4000;
+  await app.listen(port);
+  console.log(`Server running on http://localhost:${port}`);
 }
 bootstrap();
