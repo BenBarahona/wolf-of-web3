@@ -15,12 +15,14 @@ async function bootstrap() {
   app.enableCors({
     origin: isProd ? 'https://lemon.lendoor.xyz' : '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Token'],
   })
 
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
-  await app.listen(process.env.PORT ?? isProd ? 5003 : 5000);
+  const port = 3001;
+  await app.listen(port);
+  console.log(`Server running on http://localhost:${port}`);
 }
 bootstrap();

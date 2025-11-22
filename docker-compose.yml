@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: wolf-of-web3-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wolf_user
+      POSTGRES_PASSWORD: wolf_password
+      POSTGRES_DB: wolf_of_web3
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wolf_user -d wolf_of_web3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wolf-network
+
+  # Redis (optional - for caching session tokens, job queues, etc.)
+  redis:
+    image: redis:7-alpine
+    container_name: wolf-of-web3-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - wolf-network
+
+  # pgAdmin (optional - database management GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: wolf-of-web3-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@wolf-of-web3.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - wolf-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  wolf-network:
+    driver: bridge
+
