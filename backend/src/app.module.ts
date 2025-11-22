@@ -11,6 +11,7 @@ import { AgentModule } from './app/api/agent/agent.module';
 import { StrategyModule } from './app/api/strategy/strategy.module';
 import { X402TestModule } from './app/api/x402-test/x402-test.module';
 import { PaymentsModule } from './app/api/payments/payments.module';
+import { WalletModule } from './app/api/wallet/wallet.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PaymentsModule } from './app/api/payments/payments.module';
     StrategyModule,
     X402TestModule,
     PaymentsModule,
+    WalletModule,
   ],
   controllers: [AppController],
   providers: [AppService],
