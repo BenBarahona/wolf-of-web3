@@ -126,68 +126,6 @@ wolf-of-web3/
 └── docker-compose.yml  # Database services
 ```
 
-## 🔑 Features
-
-### ✅ Implemented
-
-- User-controlled Circle wallets
-- PIN-based authentication
-- **Social login (Facebook & Google)** 🆕
-- Smart Contract Accounts (SCA)
-- Wallet creation flow
-- User database with Circle mapping
-- Activity tracking
-- PostgreSQL + Redis + pgAdmin
-
-### 🚧 Coming Soon
-
-- User authentication (JWT/OAuth)
-- AI trading strategies
-- Multi-chain support
-- Portfolio dashboard
-- Transaction history
-- DeFi integrations
-
-## 🐛 Troubleshooting
-
-### Port Already in Use
-
-```bash
-# Check what's using the port
-lsof -i :3000  # Frontend
-lsof -i :4000  # Backend
-lsof -i :5432  # PostgreSQL
-
-# Stop local PostgreSQL if installed
-brew services stop postgresql
-```
-
-### Database Connection Failed
-
-```bash
-# Check containers
-yarn db:status
-
-# View logs
-yarn db:logs
-
-# Restart
-yarn db:restart
-
-# Fresh start
-yarn db:reset
-```
-
-### Module Not Found
-
-```bash
-# Reinstall dependencies
-yarn install
-
-# If pg module missing
-cd backend && yarn add pg
-```
-
 ## 🛠️ Tech Stack
 
 ### Backend
