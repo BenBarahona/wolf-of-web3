@@ -20,7 +20,7 @@ yarn dev
 Open:
 
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:4000
+- **Backend API**: http://localhost:3001
 - **pgAdmin**: http://localhost:5050
 
 ## 📋 Prerequisites
