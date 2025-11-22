@@ -153,15 +153,11 @@ export default function WalletSetup() {
         setWallets(userWallets);
         setWalletAddress(userWallets[0].address);
 
-        // For login, redirect immediately. For signup, show success message briefly
         if (authMode === "login") {
           console.log("Login successful, redirecting to dashboard...");
           router.push("/dashboard");
         } else {
           setStep("complete");
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 3000);
         }
       } else {
         throw new Error("No wallets found. Please try again.");

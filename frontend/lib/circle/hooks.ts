@@ -5,6 +5,45 @@ import { useCircle } from './CircleProvider';
 import * as circleApi from './api';
 import type { WalletInfo, UserStatus, Balance } from './types';
 
+/**
+ * Helper function to handle Circle SDK challenge status updates
+ * The SDK calls the callback multiple times with different statuses
+ */
+function handleChallengeStatus(
+  result: any,
+  operationName: string,
+  callbacks: {
+    setLoading: (loading: boolean) => void;
+    setError: (error: string | null) => void;
+    resolve: (value: boolean) => void;
+    reject: (error: Error) => void;
+  }
+) {
+  const { setLoading, setError, resolve, reject } = callbacks;
+
+  // Handle success statuses (both COMPLETE and COMPLETED)
+  if (result?.status === 'COMPLETE' || result?.status === 'COMPLETED') {
+    setLoading(false);
+    console.log(`${operationName} completed successfully`);
+    resolve(true);
+  } else if (result?.status === 'FAILED' || result?.status === 'EXPIRED') {
+    setLoading(false);
+    const errorMessage = `${operationName} ${result.status.toLowerCase()}`;
+    setError(errorMessage);
+    reject(new Error(errorMessage));
+  } else if (result?.status === 'IN_PROGRESS' || result?.status === 'PENDING') {
+    // Don't resolve or reject yet - wait for final status
+    console.log(`${operationName} status: ${result.status}`);
+  } else {
+    // Unknown status - log it for debugging
+    setLoading(false);
+    const errorMessage = `Unknown ${operationName.toLowerCase()} status: ${result?.status}`;
+    console.error(errorMessage, result);
+    setError(errorMessage);
+    reject(new Error(errorMessage));
+  }
+}
+
 export function useCreateUser() {
   const { setUserSession, executeChallenge } = useCircle();
   const [loading, setLoading] = useState(false);
@@ -52,22 +91,20 @@ export function useSetupPIN() {
           setError(null);
 
           executeChallenge(userSession.challengeId, (err, result) => {
-            setLoading(false);
-            
             if (err) {
+              setLoading(false);
               const errorMessage = err.message || 'Failed to setup PIN';
               setError(errorMessage);
               reject(err);
               return;
             }
 
-            if (result?.status === 'COMPLETED') {
-              resolve(true);
-            } else {
-              const errorMessage = `PIN setup status: ${result?.status}`;
-              setError(errorMessage);
-              reject(new Error(errorMessage));
-            }
+            handleChallengeStatus(result, 'PIN setup', {
+              setLoading,
+              setError,
+              resolve,
+              reject,
+            });
           });
         } catch (err: any) {
           setLoading(false);
@@ -228,22 +265,20 @@ export function useRestorePin() {
         const { challengeId } = await circleApi.restorePin(userSession.userToken);
 
         executeChallenge(challengeId, (err, result) => {
-          setLoading(false);
-          
           if (err) {
+            setLoading(false);
             const errorMessage = err.message || 'Failed to restore PIN';
             setError(errorMessage);
             reject(err);
             return;
           }
 
-          if (result?.status === 'COMPLETED') {
-            resolve(true);
-          } else {
-            const errorMessage = `PIN restore status: ${result?.status}`;
-            setError(errorMessage);
-            reject(new Error(errorMessage));
-          }
+          handleChallengeStatus(result, 'PIN restore', {
+            setLoading,
+            setError,
+            resolve,
+            reject,
+          });
         });
       } catch (err: any) {
         setLoading(false);
@@ -287,22 +322,20 @@ export function useTransaction() {
           );
 
           executeChallenge(challengeId, (err, result) => {
-            setLoading(false);
-            
             if (err) {
+              setLoading(false);
               const errorMessage = err.message || 'Transaction failed';
               setError(errorMessage);
               reject(err);
               return;
             }
 
-            if (result?.status === 'COMPLETED') {
-              resolve(true);
-            } else {
-              const errorMessage = `Transaction status: ${result?.status}`;
-              setError(errorMessage);
-              reject(new Error(errorMessage));
-            }
+            handleChallengeStatus(result, 'Transaction', {
+              setLoading,
+              setError,
+              resolve,
+              reject,
+            });
           });
         } catch (err: any) {
           setLoading(false);
