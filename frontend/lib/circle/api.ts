@@ -20,19 +20,46 @@ export async function getCircleConfig(): Promise<{ appId: string }> {
   return result.data;
 }
 
-export async function createUser(userId?: string) {
+export async function createUser(
+  userId?: string,
+  email?: string,
+  username?: string
+) {
   const response = await fetch(`${API_BASE_URL}/api/wallet/user/create`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({ userId, email, username }),
   });
   
   const result = await response.json();
   
   if (!result.success) {
     throw new Error(result.message || 'Failed to create user');
+  }
+  
+  return result.data;
+}
+
+export async function loginUser(email: string): Promise<{
+  userId: string;
+  userToken: string;
+  encryptionKey: string;
+  challengeId: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/wallet/user/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+  
+  const result = await response.json();
+  
+  if (!result.success) {
+    throw new Error(result.message || 'Failed to login');
   }
   
   return result.data;

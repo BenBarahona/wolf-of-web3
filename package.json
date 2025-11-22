@@ -1,0 +1,36 @@
+{
+  "name": "wolf-of-web3",
+  "version": "1.0.0",
+  "description": "AI-powered crypto trading platform with Circle wallet integration",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"yarn dev:backend\" \"yarn dev:frontend\"",
+    "dev:backend": "cd backend && yarn dev",
+    "dev:frontend": "cd frontend && yarn dev",
+    "build": "yarn build:backend && yarn build:frontend",
+    "build:backend": "cd backend && yarn build",
+    "build:frontend": "cd frontend && yarn build",
+    "db:start": "docker-compose up -d && cd backend && yarn add pg",
+    "db:stop": "docker-compose stop",
+    "db:restart": "docker-compose restart",
+    "db:logs": "docker-compose logs -f postgres",
+    "db:logs:all": "docker-compose logs -f",
+    "db:reset": "docker-compose down -v && docker-compose up -d",
+    "db:psql": "docker exec -it wolf-of-web3-db psql -U wolf_user -d wolf_of_web3",
+    "db:status": "docker-compose ps",
+    "setup": "yarn install && yarn db:start",
+    "clean": "cd backend && rm -rf node_modules dist && cd ../frontend && rm -rf node_modules .next"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "yarn": ">=1.22.0"
+  }
+}
+

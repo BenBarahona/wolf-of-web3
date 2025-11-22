@@ -11,12 +11,12 @@ export function useCreateUser() {
   const [error, setError] = useState<string | null>(null);
 
   const createUser = useCallback(
-    async (userId?: string) => {
+    async (userId?: string, email?: string, username?: string) => {
       try {
         setLoading(true);
         setError(null);
 
-        const userData = await circleApi.createUser(userId);
+        const userData = await circleApi.createUser(userId, email, username);
 
         setUserSession(userData);
 

@@ -127,11 +127,11 @@ export function CircleProvider({ children }: CircleProviderProps) {
 
       sdk.execute(challengeId, (error: any, result?: any) => {
         if (error) {
-          console.error(
-            `Challenge error ${error?.code || "Unknown"}: ${
-              error?.message || "Error!"
-            }`
-          );
+          console.error("Challenge execution error:", {
+            code: error?.code,
+            message: error?.message,
+            fullError: error,
+          });
           callback?.(error);
           return;
         }

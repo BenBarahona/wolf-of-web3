@@ -9,6 +9,7 @@ import {
   useCreateWallet,
   useWallets,
 } from "@/lib/circle";
+import * as circleApi from "@/lib/circle/api";
 
 type SetupStep =
   | "initial"
@@ -17,20 +18,26 @@ type SetupStep =
   | "creating-wallet"
   | "complete";
 
+type AuthMode = "signup" | "login";
+
 export default function WalletSetup() {
   const router = useRouter();
-  const { userSession, isInitialized, clearSession } = useCircle();
+  const { userSession, isInitialized, clearSession, setUserSession } =
+    useCircle();
   const { createUser } = useCreateUser();
   const { setupPIN } = useSetupPIN();
   const { createWallet } = useCreateWallet();
   const { getWallets } = useWallets();
 
   const [step, setStep] = useState<SetupStep>("initial");
+  const [authMode, setAuthMode] = useState<AuthMode>("signup");
   const [error, setError] = useState<string | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [wallets, setWallets] = useState<any[]>([]);
+  const [email, setEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
 
-  // Check for existing wallets on mount
+  // Check for existing wallets on mount and redirect to dashboard if found
   useEffect(() => {
     const checkExistingWallets = async () => {
       if (userSession) {
@@ -39,7 +46,8 @@ export default function WalletSetup() {
           if (userWallets && userWallets.length > 0) {
             setWallets(userWallets);
             setWalletAddress(userWallets[0].address);
-            setStep("complete");
+            console.log("Existing wallet found, redirecting to dashboard...");
+            router.push("/dashboard");
           }
         } catch (err) {
           console.error("Error checking wallets:", err);
@@ -50,14 +58,29 @@ export default function WalletSetup() {
     if (isInitialized && userSession) {
       checkExistingWallets();
     }
-  }, [isInitialized, userSession, getWallets]);
+  }, [isInitialized, userSession, getWallets, router]);
 
   const handleStartSetup = async () => {
     try {
       setError(null);
-      setStep("creating-user");
 
-      const userData = await createUser();
+      if (!email || !email.trim()) {
+        setError("Email is required to create your wallet");
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+
+      setStep("creating-user");
+      const userData = await createUser(
+        undefined, // userId (let Circle generate)
+        email,
+        username || undefined
+      );
       console.log("User created with challengeId:", userData.challengeId);
 
       // User is created and initialized, now prompt for PIN setup
@@ -68,24 +91,53 @@ export default function WalletSetup() {
     }
   };
 
+  const handleLogin = async () => {
+    try {
+      setError(null);
+
+      if (!email || !email.trim()) {
+        setError("Email is required to log in");
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+
+      setStep("creating-user");
+
+      const userData = await circleApi.loginUser(email);
+
+      setUserSession(userData);
+
+      setStep("setting-pin");
+    } catch (err: any) {
+      setError(err.message || "Failed to login. Have you created an account?");
+      setStep("initial");
+    }
+  };
+
   const handlePINSetup = async () => {
     try {
       setError(null);
 
-      // Execute the PIN setup challenge
-      // Note: According to Circle docs, the wallet is created automatically
-      // as part of the /user/initialize endpoint when the PIN challenge completes
       const success = await setupPIN();
 
       if (success) {
-        console.log("PIN setup successful - wallet created automatically");
+        if (authMode === "signup") {
+          console.log("PIN setup successful - wallet created automatically");
+        } else {
+          console.log("PIN verified - logging in");
+        }
 
-        // Fetch the wallets that were just created
+        // Fetch the user's wallets
         setStep("creating-wallet");
         await fetchWallets();
       }
     } catch (err: any) {
-      setError(err.message || "Failed to setup PIN");
+      setError(err.message || "Failed to verify PIN");
       setStep("setting-pin");
     }
   };
@@ -94,45 +146,28 @@ export default function WalletSetup() {
     try {
       setError(null);
 
-      // Fetch wallets created during initialization
       const userWallets = await getWallets();
 
       if (userWallets && userWallets.length > 0) {
         console.log("Wallets fetched:", userWallets);
         setWallets(userWallets);
         setWalletAddress(userWallets[0].address);
-        setStep("complete");
 
-        // Optionally auto-redirect to dashboard after a brief delay
-        // Uncomment the lines below to enable auto-redirect
-        // setTimeout(() => {
-        //   router.push("/dashboard");
-        // }, 2000);
+        // For login, redirect immediately. For signup, show success message briefly
+        if (authMode === "login") {
+          console.log("Login successful, redirecting to dashboard...");
+          router.push("/dashboard");
+        } else {
+          setStep("complete");
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 3000);
+        }
       } else {
         throw new Error("No wallets found. Please try again.");
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch wallets");
-      setStep("setting-pin");
-    }
-  };
-
-  const handleCreateWallet = async () => {
-    // This function is kept for backwards compatibility
-    // but is no longer used in the primary flow
-    try {
-      setError(null);
-
-      const wallet = await createWallet("ARC-TESTNET", "SCA");
-      console.log("Additional wallet created:", wallet);
-
-      setWalletAddress(wallet.address);
-      setStep("complete");
-
-      const userWallets = await getWallets();
-      setWallets(userWallets);
-    } catch (err: any) {
-      setError(err.message || "Failed to create wallet");
       setStep("setting-pin");
     }
   };
@@ -176,9 +211,8 @@ export default function WalletSetup() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Wolf of Web3
+            The Wolf of Web3
           </h1>
-          <p className="text-gray-600">Your AI-Powered Personal Broker</p>
         </div>
 
         {/* Error Message */}
@@ -188,84 +222,186 @@ export default function WalletSetup() {
           </div>
         )}
 
-        {/* Content based on step */}
         {step === "initial" && (
           <div className="space-y-6">
-            <div className="text-center space-y-4">
-              <p className="text-gray-700">
-                Create your Circle Smart Wallet to start investing with
-                AI-powered strategies.
-              </p>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">
-                  What you'll get:
-                </h3>
-                <ul className="text-sm text-gray-700 space-y-2 text-left">
-                  <li className="flex items-start">
-                    <svg
-                      className="w-5 h-5 text-green-500 mr-2 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Circle Smart Contract Account (SCA)</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg
-                      className="w-5 h-5 text-green-500 mr-2 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>No seed phrases - just a simple PIN</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg
-                      className="w-5 h-5 text-green-500 mr-2 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>AI-powered investment strategies</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg
-                      className="w-5 h-5 text-green-500 mr-2 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Autonomous trading on DeFi protocols</span>
-                  </li>
-                </ul>
-              </div>
+            {/* Auth Mode Toggle */}
+            <div className="flex rounded-lg bg-gray-100 p-1">
+              <button
+                onClick={() => setAuthMode("signup")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                  authMode === "signup"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Create Account
+              </button>
+              <button
+                onClick={() => setAuthMode("login")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                  authMode === "login"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Log In
+              </button>
             </div>
-            <button
-              onClick={handleStartSetup}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105"
-            >
-              Create Smart Wallet
-            </button>
+
+            {authMode === "signup" ? (
+              <>
+                <div className="text-center space-y-4">
+                  <p className="text-gray-700">
+                    Create your Circle Smart Wallet to start investing with
+                    AI-powered strategies.
+                  </p>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      What you'll get:
+                    </h3>
+                    <ul className="text-sm text-gray-700 space-y-2 text-left">
+                      <li className="flex items-start">
+                        <svg
+                          className="w-5 h-5 text-green-500 mr-2 mt-0.5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>Circle Smart Contract Account (SCA)</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg
+                          className="w-5 h-5 text-green-500 mr-2 mt-0.5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>No seed phrases - just a simple PIN</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg
+                          className="w-5 h-5 text-green-500 mr-2 mt-0.5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>AI-powered investment strategies</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg
+                          className="w-5 h-5 text-green-500 mr-2 mt-0.5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>Autonomous trading on DeFi protocols</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Required to log back into your wallet
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="username"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Username (optional)
+                    </label>
+                    <input
+                      id="username"
+                      type="text"
+                      placeholder="wolftrader"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleStartSetup}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105"
+                >
+                  Create Smart Wallet
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-center space-y-4">
+                  <p className="text-gray-700">
+                    Welcome back! Enter your email to access your wallet.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="email-login"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="email-login"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleLogin}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105"
+                >
+                  Log In with PIN
+                </button>
+              </>
+            )}
           </div>
         )}
 

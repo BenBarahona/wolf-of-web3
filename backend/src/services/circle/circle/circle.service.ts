@@ -351,7 +351,9 @@ export class CircleService {
 
       const response = await axios.post(
         `${this.baseUrl}/user/pin/restore`,
-        {},
+        {
+          idempotencyKey: uuidv4(),
+        },
         {
           headers: {
             'Content-Type': 'application/json',

@@ -7,16 +7,20 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Req,
 } from '@nestjs/common';
 import {
   CircleService,
   CreateUserResponse,
   CreateWalletResponse,
-  User,
+  User as CircleUser,
 } from '../../../services/circle/circle/circle.service';
+import { UsersService } from '../../../services/users/users.service';
 
 interface CreateUserDto {
   userId?: string;
+  email?: string;
+  username?: string;
 }
 
 interface CreateWalletDto {
@@ -39,7 +43,10 @@ interface AcquireTokenDto {
 export class WalletController {
   private readonly logger = new Logger(WalletController.name);
 
-  constructor(private readonly circleService: CircleService) {}
+  constructor(
+    private readonly circleService: CircleService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Get('config')
   async getConfig() {
@@ -66,12 +73,35 @@ export class WalletController {
   @Post('user/create')
   async createUser(
     @Body() body: CreateUserDto,
-  ): Promise<{ success: boolean; data: CreateUserResponse }> {
+    @Req() req: any,
+  ): Promise<{ success: boolean; data: CreateUserResponse & { dbUserId: string } }> {
     try {
-      const result = await this.circleService.createUser(body.userId);
+      // Create user in Circle
+      const circleResult = await this.circleService.createUser(body.userId);
+      
+      // Storing in db
+      const dbUser = await this.usersService.createUser(
+        circleResult.userId,
+        body.email,
+        body.username,
+      );
+
+      await this.usersService.logActivity(
+        dbUser.id,
+        'circle_user_created',
+        {
+          circleUserId: circleResult.userId,
+        },
+        req.ip,
+        req.headers['user-agent'],
+      );
+
       return {
         success: true,
-        data: result,
+        data: {
+          ...circleResult,
+          dbUserId: dbUser.id,
+        },
       };
     } catch (error: any) {
       this.logger.error('Error creating user:', error);
@@ -79,6 +109,81 @@ export class WalletController {
         {
           success: false,
           message: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('user/login')
+  async loginUser(
+    @Body() body: { email: string },
+    @Req() req: any,
+  ): Promise<{
+    success: boolean;
+    data: {
+      userId: string;
+      userToken: string;
+      encryptionKey: string;
+      challengeId: string;
+    };
+  }> {
+    try {
+      if (!body.email) {
+        throw new HttpException('Email is required', HttpStatus.BAD_REQUEST);
+      }
+
+      const dbUser = await this.usersService.findByEmail(body.email);
+
+      if (!dbUser) {
+        throw new HttpException(
+          'No account found with this email',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // We need a new session token from Circle
+      const sessionData = await this.circleService.acquireSessionToken(
+        dbUser.circleUserId,
+      );
+
+      // For login, we use restorePin to verify the existing PIN (not initializeUser)
+      const challengeId = await this.circleService.restorePin(
+        sessionData.userToken,
+      );
+
+      await this.usersService.updateLastLogin(dbUser.id);
+
+      await this.usersService.logActivity(
+        dbUser.id,
+        'user_login',
+        {
+          email: body.email,
+        },
+        req.ip,
+        req.headers['user-agent'],
+      );
+
+      return {
+        success: true,
+        data: {
+          userId: dbUser.circleUserId,
+          userToken: sessionData.userToken,
+          encryptionKey: sessionData.encryptionKey,
+          challengeId: challengeId,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error('Error logging in user:', error);
+      
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to log in',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
@@ -208,7 +313,7 @@ export class WalletController {
   @Get('user/status')
   async getUserStatus(
     @Headers('x-user-token') userToken: string,
-  ): Promise<{ success: boolean; data: User }> {
+  ): Promise<{ success: boolean; data: CircleUser }> {
     try {
       if (!userToken) {
         throw new HttpException(

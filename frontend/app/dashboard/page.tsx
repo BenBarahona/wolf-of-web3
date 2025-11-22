@@ -101,9 +101,8 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Wolf of Web3
+                  The Wolf of Web3
                 </h1>
-                <p className="text-sm text-gray-500">Your AI-Powered Wallet</p>
               </div>
             </div>
             <button
