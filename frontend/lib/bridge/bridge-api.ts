@@ -1,11 +1,14 @@
 /**
  * Bridge API Client
- * Calls backend Bridge Kit service
+ * Calls backend CCTP V2 service (with Arc Testnet support)
  */
 
 import type { SupportedChainId } from './chains.config';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
+// Use CCTP V2 endpoints for Arc support
+const USE_CCTP_V2 = true;
 
 export interface BridgeTransferRequest {
   fromChain: string;
@@ -49,21 +52,17 @@ export interface BridgeInfo {
   technology: string;
 }
 
-/**
- * Maps our chain IDs to chain names expected by backend
- */
 function getChainName(chainId: SupportedChainId): string {
+  // Map to CCTP V2 chain names (must match backend cctp-v2.service.ts)
   const chainMap: Record<SupportedChainId, string> = {
-    5042002: 'Arc',
-    11155111: 'Celo',
-    4801: 'World',
+    5042002: 'Arc Testnet',
+    11155111: 'Ethereum Sepolia',
+    84532: 'Base Sepolia',
+    4801: 'World Chain Sepolia',
   };
   return chainMap[chainId] || 'Unknown';
 }
 
-/**
- * Execute a bridge transfer via backend Bridge Kit
- */
 export async function bridgeTransfer(params: {
   sourceChainId: SupportedChainId;
   destinationChainId: SupportedChainId;
@@ -77,7 +76,19 @@ export async function bridgeTransfer(params: {
     destinationAddress: params.recipientAddress,
   };
 
-  const response = await fetch(`${BACKEND_URL}/api/bridge/transfer`, {
+  // Use CCTP V2 endpoint for Arc support
+  const endpoint = USE_CCTP_V2 
+    ? `${BACKEND_URL}/api/bridge/cctp-v2/transfer`
+    : `${BACKEND_URL}/api/bridge/transfer`;
+
+  console.log('🌉 Bridge Transfer:', {
+    endpoint,
+    from: request.fromChain,
+    to: request.toChain,
+    amount: request.amount,
+  });
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -86,15 +97,13 @@ export async function bridgeTransfer(params: {
   });
 
   if (!response.ok) {
-    throw new Error(`Bridge transfer failed: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Bridge transfer failed: ${response.statusText}`);
   }
 
   return response.json();
 }
 
-/**
- * Get bridge estimate
- */
 export async function getBridgeEstimate(
   sourceChainId: SupportedChainId,
   destinationChainId: SupportedChainId,
@@ -121,11 +130,13 @@ export async function getBridgeEstimate(
   return response.json();
 }
 
-/**
- * Get bridge service info
- */
 export async function getBridgeInfo(): Promise<BridgeInfo> {
-  const response = await fetch(`${BACKEND_URL}/api/bridge/info`);
+  // Use CCTP V2 info for Arc support
+  const endpoint = USE_CCTP_V2
+    ? `${BACKEND_URL}/api/bridge/cctp-v2/info`
+    : `${BACKEND_URL}/api/bridge/info`;
+
+  const response = await fetch(endpoint);
 
   if (!response.ok) {
     throw new Error(`Failed to get bridge info: ${response.statusText}`);
@@ -134,9 +145,6 @@ export async function getBridgeInfo(): Promise<BridgeInfo> {
   return response.json();
 }
 
-/**
- * Health check for bridge service
- */
 export async function checkBridgeHealth(): Promise<{
   status: string;
   service: string;
@@ -152,9 +160,6 @@ export async function checkBridgeHealth(): Promise<{
   return response.json();
 }
 
-/**
- * Execute demo bridge (for testing)
- */
 export async function bridgeDemo(): Promise<BridgeTransferResponse> {
   const response = await fetch(`${BACKEND_URL}/api/bridge/demo`, {
     method: 'POST',

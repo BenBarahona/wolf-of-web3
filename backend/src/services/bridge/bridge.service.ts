@@ -8,6 +8,13 @@ import { ConfigService } from '@nestjs/config';
 import { BridgingKit } from '@circle-fin/bridging-kit';
 import { createAdapterFromPrivateKey } from '@circle-fin/adapter-viem-v2';
 
+// Chain name to ID mapping
+const CHAIN_MAP: Record<string, number> = {
+  'Arc': 5042002,
+  'Celo': 11155111,
+  'World': 4801,
+};
+
 export interface BridgeTransferRequest {
   fromChain: string;
   toChain: string;
@@ -56,6 +63,20 @@ export class BridgeService {
       };
     }
 
+    // Map chain names to chain IDs
+    const fromChainId = CHAIN_MAP[request.fromChain];
+    const toChainId = CHAIN_MAP[request.toChain];
+
+    if (!fromChainId || !toChainId) {
+      this.logger.error(`Invalid chain names: ${request.fromChain} -> ${request.toChain}`);
+      return {
+        success: false,
+        message: `Invalid chain names. Supported chains: ${Object.keys(CHAIN_MAP).join(', ')}`,
+      };
+    }
+
+    this.logger.log(`Resolved chain IDs: ${fromChainId} -> ${toChainId}`);
+
     try {
       const adapter = createAdapterFromPrivateKey({
         privateKey: this.bridgeWalletPrivateKey as `0x${string}`,
@@ -64,9 +85,13 @@ export class BridgeService {
       this.logger.log('Created adapter for source chain');
 
       const result = await this.kit.bridge({
-        from: adapter as any,
+        from: {
+          adapter: adapter as any,
+          chain: fromChainId,
+        },
         to: {
           adapter: adapter as any,
+          chain: toChainId,
         },
         amount: request.amount,
       } as any);
@@ -125,22 +150,63 @@ export class BridgeService {
   }
 
   /**
-   * Get supported chains for bridging
-   * Note: Bridge Kit supports these chains out of the box
+   * Get supported chains directly from Circle's Bridge Kit SDK
+   * This is the authoritative list of what chains are actually supported
    */
   getSupportedChains() {
-    return {
-      supported: [
-        { name: 'Arc', chainId: 5042002, symbol: 'ARC' },
-        { name: 'Celo', chainId: 11155111, symbol: 'CELO' },
-        { name: 'World', chainId: 4801, symbol: 'WLD' },
-        { name: 'Ethereum', chainId: 1, symbol: 'ETH' },
-        { name: 'Base', chainId: 8453, symbol: 'BASE' },
-        { name: 'Arbitrum', chainId: 42161, symbol: 'ARB' },
-        { name: 'Polygon', chainId: 137, symbol: 'MATIC' },
-      ],
-      note: 'Bridge Kit handles contract addresses and routing automatically',
-    };
+    try {
+      // Get the actual supported chains from the Bridge Kit
+      const supportedChains = this.kit.getSupportedChains();
+      
+      this.logger.log(`Bridge Kit supports ${supportedChains.length} chains`);
+      
+      // Separate testnet and mainnet chains
+      const testnetChains = supportedChains.filter((chain: any) => chain.isTestnet);
+      const mainnetChains = supportedChains.filter((chain: any) => !chain.isTestnet);
+      
+      // Check if Arc is in the list
+      const hasArc = supportedChains.some((chain: any) => 
+        chain.name?.toLowerCase().includes('arc') || 
+        chain.chain?.toLowerCase().includes('arc') ||
+        chain.chainId === 5042002
+      );
+      
+      // Check if Celo is in the list
+      const hasCelo = supportedChains.some((chain: any) => 
+        chain.name?.toLowerCase().includes('celo') && 
+        (chain.chainId === 44787 || chain.chainId === 42220)
+      );
+      
+      return {
+        totalChains: supportedChains.length,
+        testnetCount: testnetChains.length,
+        mainnetCount: mainnetChains.length,
+        hasArcSupport: hasArc,
+        hasCeloSupport: hasCelo,
+        testnetChains: testnetChains.map((chain: any) => ({
+          name: chain.name,
+          chain: chain.chain,
+          chainId: chain.chainId,
+          type: chain.type,
+          usdcAddress: chain.usdcAddress,
+        })),
+        mainnetChains: mainnetChains.map((chain: any) => ({
+          name: chain.name,
+          chain: chain.chain,
+          chainId: chain.chainId,
+          type: chain.type,
+          usdcAddress: chain.usdcAddress,
+        })),
+        allChainNames: supportedChains.map((chain: any) => chain.name).sort(),
+        note: 'This is the authoritative list from Circle Bridge Kit SDK',
+      };
+    } catch (error) {
+      this.logger.error('Failed to get supported chains', error);
+      return {
+        error: 'Failed to retrieve supported chains from Bridge Kit',
+        details: error,
+      };
+    }
   }
 
   /**

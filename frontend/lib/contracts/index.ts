@@ -7,4 +7,5 @@ export * from './useCircleVault';
 export * from './usdc';
 export * from './useUSDC';
 export * from './multiChainVaults';
+export * from './vaultConfigs';
 
