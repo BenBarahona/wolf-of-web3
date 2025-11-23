@@ -1,3 +1,4 @@
+// user.entity.ts
 import {
   Entity,
   Column,
@@ -21,8 +22,19 @@ export class User {
   @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
   username: string | null;
 
-  @Column({ name: 'circle_user_id', type: 'uuid', unique: true })
-  circleUserId: string;
+  // 🔑 Circle ahora es opcional: no todos los usuarios van a venir de Circle
+  @Column({ name: 'circle_user_id', type: 'uuid', unique: true, nullable: true })
+  circleUserId: string | null;
+
+  // 🔑 Nuevos identificadores por host
+  @Column({ name: 'farcaster_fid', type: 'varchar', length: 100, nullable: true })
+  farcasterFid: string | null;
+
+  @Column({ name: 'world_user_id', type: 'varchar', length: 100, nullable: true })
+  worldUserId: string | null;
+
+  @Column({ name: 'primary_wallet_address', type: 'varchar', length: 255, nullable: true })
+  primaryWalletAddress: string | null;
 
   @Column({ type: 'varchar', length: 20, default: 'active' })
   status: string;
@@ -48,4 +60,3 @@ export class User {
   @OneToMany(() => UserActivity, (activity) => activity.user)
   activities: UserActivity[];
 }
-

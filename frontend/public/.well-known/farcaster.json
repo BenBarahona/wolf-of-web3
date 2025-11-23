@@ -1,0 +1,18 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjE1MTQ2NDAsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhDZUI1NTk2OEVCODU0MmFFRDFkNTBkYmM2RUVFZkQzRDc1YTNFNjlCIn0",
+    "payload": "eyJkb21haW4iOiI4bGg4ZG1sbC0zMDAwLmJycy5kZXZ0dW5uZWxzLm1zIn0",
+    "signature": "Q0NZbpEyKK3G1lJXERpHiKH6DBKjCAWJe9QgdDdC38I2Ds/zc8C/ZmpiPO23KcBTUY6sXf4D7RoZ5Wm3nZGcLxs="
+  },
+  "frame": {
+    "version": "1",
+    "name": "Example Frame",
+    "iconUrl": "https://8lh8dmll-3000.brs.devtunnels.ms/icon.png",
+    "homeUrl": "https://8lh8dmll-3000.brs.devtunnels.ms",
+    "imageUrl": "https://8lh8dmll-3000.brs.devtunnels.ms/image.png",
+    "buttonTitle": "Check this out",
+    "splashImageUrl": "https://8lh8dmll-3000.brs.devtunnels.ms/splash.png",
+    "splashBackgroundColor": "#eeccff",
+    "webhookUrl": "https://8lh8dmll-3000.brs.devtunnels.ms/api/webhook"
+  }
+}

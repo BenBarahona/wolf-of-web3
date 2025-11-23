@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { userSession, isInitialized, clearSession } = useCircle();
+  const {
+    userSession,
+    isInitialized,
+    clearSession,
+    walletProvider, // 👈 NUEVO
+  } = useCircle();
   const { getWallets } = useWallets();
   const { getBalance } = useWalletBalance();
 
@@ -29,7 +34,6 @@ export default function Dashboard() {
         const userWallets = await getWallets();
         setWallets(userWallets || []);
 
-        // Load balances for each wallet
         const balancePromises = (userWallets || []).map(async (wallet: any) => {
           try {
             const walletBalances = await getBalance(wallet.id);
@@ -117,6 +121,20 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 👇 Info del provider actual (solo lectura) */}
+        <div className="mb-6">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-900 text-white text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            Active wallet provider:{" "}
+            <span className="uppercase">{walletProvider}</span>
+          </span>
+          <p className="mt-1 text-xs text-gray-600">
+            Este modo viene del <code>.env</code> (NEXT_PUBLIC_WALLET_PROVIDER) y
+            define si el flujo usa Worldcoin o Celo. El usuario no lo puede
+            cambiar.
+          </p>
+        </div>
+
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-800 text-sm">{error}</p>

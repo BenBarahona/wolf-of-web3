@@ -1,3 +1,6 @@
+// src/lib/circle/api.ts
+import { WALLET_PROVIDER } from '../walletProvider';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface ApiResponse<T> {
@@ -30,7 +33,12 @@ export async function createUser(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ userId, email, username }),
+    body: JSON.stringify({
+      userId,
+      email,
+      username,
+      walletProvider: WALLET_PROVIDER, // 👈 acá viaja al back
+    }),
   });
   
   const result = await response.json();
@@ -53,7 +61,10 @@ export async function loginUser(email: string): Promise<{
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({
+      email,
+      walletProvider: WALLET_PROVIDER, // 👈 también en login
+    }),
   });
   
   const result = await response.json();
@@ -246,4 +257,3 @@ export async function createTransaction(
   
   return result.data;
 }
-

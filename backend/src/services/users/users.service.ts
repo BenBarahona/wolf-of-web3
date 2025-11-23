@@ -1,7 +1,25 @@
-import { Injectable, Logger, ConflictException, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+// users.service.ts
+import {
+  Injectable,
+  Logger,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+  import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, WalletPreference, UserActivity } from '../../entities';
+
+export type AuthProvider = 'circle' | 'farcaster' | 'world' | 'web';
+
+export interface CreateOrUpdateUserParams {
+  provider: AuthProvider;
+  email?: string;
+  username?: string;
+  circleUserId?: string;
+  farcasterFid?: string;
+  worldUserId?: string;
+  primaryWalletAddress?: string;
+}
 
 @Injectable()
 export class UsersService {
@@ -16,55 +34,179 @@ export class UsersService {
     private activityRepository: Repository<UserActivity>,
   ) {}
 
+  /**
+   * ⚠️ Legacy: usado por el flujo actual de Circle (WalletController).
+   * Internamente ahora delega al método genérico multi-host.
+   */
   async createUser(
     circleUserId: string,
     email?: string,
     username?: string,
   ): Promise<User> {
-    try {
-      // Check if user with this Circle ID already exists
-      const existingUser = await this.userRepository.findOne({
-        where: { circleUserId },
-      });
+    return this.createOrUpdateFromAuth({
+      provider: 'circle',
+      circleUserId,
+      email,
+      username,
+    });
+  }
 
-      if (existingUser) {
-        this.logger.warn(`User with Circle ID ${circleUserId} already exists`);
-        return existingUser;
+  /**
+   * ✅ Nuevo: crear o actualizar usuario a partir de cualquier proveedor (Circle/Farcaster/World/Web).
+   */
+  async createOrUpdateFromAuth(params: CreateOrUpdateUserParams): Promise<User> {
+    const {
+      provider,
+      email,
+      username,
+      circleUserId,
+      farcasterFid,
+      worldUserId,
+      primaryWalletAddress,
+    } = params;
+
+    let user: User | null = null;
+
+    // 1) Intentamos encontrar al usuario por los IDs más fuertes
+    if (circleUserId) {
+      user = await this.userRepository.findOne({ where: { circleUserId } });
+    }
+
+    if (!user && farcasterFid) {
+      user = await this.userRepository.findOne({ where: { farcasterFid } });
+    }
+
+    if (!user && worldUserId) {
+      user = await this.userRepository.findOne({ where: { worldUserId } });
+    }
+
+    if (!user && primaryWalletAddress) {
+      user = await this.userRepository.findOne({
+        where: { primaryWalletAddress: primaryWalletAddress.toLowerCase() },
+      });
+    }
+
+    // 2) Si existe, lo actualizamos con data que falte
+    if (user) {
+      let needsSave = false;
+
+      if (!user.circleUserId && circleUserId) {
+        user.circleUserId = circleUserId;
+        needsSave = true;
       }
 
-      // Check if email is already taken
-      if (email) {
-        const emailExists = await this.userRepository.findOne({ where: { email } });
-        if (emailExists) {
+      if (!user.farcasterFid && farcasterFid) {
+        user.farcasterFid = farcasterFid;
+        needsSave = true;
+      }
+
+      if (!user.worldUserId && worldUserId) {
+        user.worldUserId = worldUserId;
+        needsSave = true;
+      }
+
+      if (!user.primaryWalletAddress && primaryWalletAddress) {
+        user.primaryWalletAddress = primaryWalletAddress.toLowerCase();
+        needsSave = true;
+      }
+
+      if (!user.email && email) {
+        // check de email duplicado
+        const emailExists = await this.userRepository.findOne({
+          where: { email },
+        });
+        if (emailExists && emailExists.id !== user.id) {
           throw new ConflictException('Email already in use');
         }
+        user.email = email;
+        needsSave = true;
       }
 
-      const user = this.userRepository.create({
-        circleUserId,
-        email,
-        username,
-        status: 'active',
-        preferences: {},
+      if (!user.username && username) {
+        user.username = username;
+        needsSave = true;
+      }
+
+      if (needsSave) {
+        user = await this.userRepository.save(user);
+      }
+
+      await this.logActivity(user.id, 'user_login', {
+        provider,
       });
 
-      const savedUser = await this.userRepository.save(user);
-      this.logger.log(`User created: ${savedUser.id}`);
+      this.logger.log(
+        `User updated from ${provider} auth: ${user.id} (${user.email || user.username || ''})`,
+      );
 
-      await this.logActivity(savedUser.id, 'user_created', {
-        circleUserId,
-      });
-
-      return savedUser;
-    } catch (error) {
-      this.logger.error(`Failed to create user: ${error.message}`);
-      throw error;
+      return user;
     }
+
+    // 3) Si no existe, creamos uno nuevo
+    if (email) {
+      const emailExists = await this.userRepository.findOne({
+        where: { email },
+      });
+      if (emailExists) {
+        throw new ConflictException('Email already in use');
+      }
+    }
+
+    const newUser = this.userRepository.create({
+      circleUserId: circleUserId || null,
+      farcasterFid: farcasterFid || null,
+      worldUserId: worldUserId || null,
+      primaryWalletAddress: primaryWalletAddress
+        ? primaryWalletAddress.toLowerCase()
+        : null,
+      email: email || null,
+      username: username || null,
+      status: 'active',
+      preferences: {},
+    });
+
+    const savedUser = await this.userRepository.save(newUser);
+    this.logger.log(
+      `User created from ${provider} auth: ${savedUser.id} (${savedUser.email || savedUser.username || ''})`,
+    );
+
+    await this.logActivity(savedUser.id, 'user_created', {
+      provider,
+      circleUserId,
+      farcasterFid,
+      worldUserId,
+      primaryWalletAddress,
+    });
+
+    return savedUser;
   }
+
+  // -------- Finders por distintos IDs / campos --------
 
   async findByCircleUserId(circleUserId: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { circleUserId },
+      relations: ['walletPreferences'],
+    });
+  }
+
+  async findByFarcasterFid(farcasterFid: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { farcasterFid },
+      relations: ['walletPreferences'],
+    });
+  }
+
+  async findByWorldUserId(worldUserId: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { worldUserId },
+      relations: ['walletPreferences'],
+    });
+  }
+
+  async findByPrimaryWalletAddress(address: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { primaryWalletAddress: address.toLowerCase() },
       relations: ['walletPreferences'],
     });
   }
@@ -97,7 +239,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    user.preferences = { ...user.preferences, ...preferences };
+    user.preferences = { ...(user.preferences || {}), ...preferences };
     return this.userRepository.save(user);
   }
 
@@ -166,7 +308,7 @@ export class UsersService {
       });
 
       await this.activityRepository.save(activity);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to log activity: ${error.message}`);
     }
   }
@@ -182,4 +324,5 @@ export class UsersService {
     });
   }
 }
+
 
