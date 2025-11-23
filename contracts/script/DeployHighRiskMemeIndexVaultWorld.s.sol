@@ -9,7 +9,7 @@ import {WolfBaseIndexVault} from "../src/strategy/WolfBaseIndexVault.sol";
 contract DeployHighRiskMemeIndexVaultWorld is Script {
     // USDC on World Chain mainnet
     // https://docs.world.org/world-chain/reference/useful-contracts
-    address constant USDC_WORLD = 0x79A02482A880bCE3F13e09Da970dC34db4CD24d1;
+    address constant USDC_WORLD = 0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88;
 
     function run() external {
         // Load deployer private key from env: PRIVATE_KEY
