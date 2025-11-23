@@ -8,7 +8,7 @@ export interface UserSession {
   userId: string;
   userToken: string;
   encryptionKey: string;
-  challengeId: string;
+  challengeId?: string; // Optional: only needed for signup/PIN setup, not for login
   refreshToken?: string;
 }
 

@@ -85,12 +85,18 @@ export function useSetupPIN() {
         throw new Error('No user session available');
       }
 
+      if (!userSession.challengeId) {
+        throw new Error('No challenge ID available for PIN setup');
+      }
+
+      const challengeId = userSession.challengeId;
+
       return new Promise((resolve, reject) => {
         try {
           setLoading(true);
           setError(null);
 
-          executeChallenge(userSession.challengeId, (err, result) => {
+          executeChallenge(challengeId, (err, result) => {
             if (err) {
               setLoading(false);
               const errorMessage = err.message || 'Failed to setup PIN';
