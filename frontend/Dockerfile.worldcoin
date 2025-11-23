@@ -10,7 +10,7 @@ RUN apt-get update \
   && corepack enable \
   && corepack prepare yarn@3.2.3 --activate
 
-# Provider fijo para WORLDCOIN
+# Provider fijo para WORLDCOIN (build-time)
 ENV NEXT_PUBLIC_WALLET_PROVIDER=worldcoin
 
 COPY . .
@@ -34,6 +34,7 @@ RUN apt-get update \
   && corepack enable \
   && corepack prepare yarn@3.2.3 --activate
 
+ENV NODE_ENV=production
 ENV NEXT_PUBLIC_WALLET_PROVIDER=worldcoin
 ENV NEXT_PUBLIC_API_URL=https://api.wolf-of-web3.xyz
 ENV NEXT_PUBLIC_CIRCLE_APP_ID=5300d92b-3cff-50e4-b75e-ccb5fe0270d8
@@ -42,11 +43,11 @@ ENV NEXT_PUBLIC_FACEBOOK_APP_ID=2210580552770060
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/yarn.lock ./
 
-RUN yarn install
+RUN yarn install --production=true
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.ts ./
+# 👇 NO copiamos next.config.ts, ya no hace falta en runtime
 
 EXPOSE 3002
 
