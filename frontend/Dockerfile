@@ -41,7 +41,7 @@ COPY --from=builder /app/yarn.lock ./
 RUN yarn install
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/vite.config.ts ./
+COPY --from=builder /app/next.config.ts ./
 
 
 EXPOSE 3000
@@ -52,4 +52,4 @@ CMD ["sh", "-c", "PORT=3003; \
   elif [ \"$NEXT_PUBLIC_WALLET_PROVIDER\" = \"worldcoin\" ]; then PORT=3002; \
   fi; \
   echo \"Starting on port $PORT (provider: $NEXT_PUBLIC_WALLET_PROVIDER)\"; \
-  yarn preview --host 0.0.0.0 --port $PORT"]
+  yarn start --host 0.0.0.0 --port $PORT"]

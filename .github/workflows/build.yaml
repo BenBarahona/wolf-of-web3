@@ -1,7 +1,7 @@
 name: Build & Deploy
 env:
-  IMAGE_TAG_BACKEND: ghcr.io/fabian416/lendoor-aptos/backend
-  IMAGE_TAG_FRONTEND: ghcr.io/fabian416/lendoor-aptos/frontend
+  IMAGE_TAG_BACKEND: ghcr.io/benbarahona/wolf-of-web3/backend
+  IMAGE_TAG_FRONTEND: ghcr.io/benbarahona/wolf-of-web3/frontend
 
   IMAGE_VERSION: ${{ github.ref_name == 'main' && 'production'
     || github.ref_name == 'worldcoin' && 'worldcoin'
