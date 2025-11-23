@@ -1,8 +1,8 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { CircleProvider } from "@/lib/circle";
-import { Web3Provider } from "@/lib/contracts";
+import { AppProviders } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,25 +14,45 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const APP_BASE_URL =
+  process.env.NEXT_PUBLIC_APP_BASE_URL || "https://your-app.com";
+
+const miniAppEmbed = {
+  version: "1",
+  imageUrl: `${APP_BASE_URL}/miniapp-preview.png`,
+  button: {
+    title: "Open Wolf of Web3",
+    action: {
+      type: "launch_miniapp",
+      name: "Wolf of Web3",
+      url: APP_BASE_URL,
+      splashImageUrl: `${APP_BASE_URL}/miniapp-splash.png`,
+      splashBackgroundColor: "#000000",
+    },
+  },
+};
+
 export const metadata: Metadata = {
   title: "Wolf of Web3 - AI-Powered Personal Broker",
   description:
     "Invest smarter with AI-powered DeFi strategies on Circle Smart Wallets",
+  icons: {
+    icon: "/favicon.png",      // 👉 toma /public/favicon.png
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
+  other: {
+    "fc:miniapp": JSON.stringify(miniAppEmbed),
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Web3Provider>
-          <CircleProvider>{children}</CircleProvider>
-        </Web3Provider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
