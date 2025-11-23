@@ -13,6 +13,7 @@ import { X402TestModule } from './app/api/x402-test/x402-test.module';
 import { PaymentsModule } from './app/api/payments/payments.module';
 import { WalletModule } from './app/api/wallet/wallet.module';
 import { UsersModule } from './services/users/users.module';
+import { UsersApiModule } from './app/api/users/users.module';
 import * as path from 'path';
 
 @Module({
@@ -60,6 +61,7 @@ import * as path from 'path';
     X402TestModule,
     PaymentsModule,
     WalletModule,
+    UsersApiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

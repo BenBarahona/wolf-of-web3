@@ -17,6 +17,7 @@ import {
   User as CircleUser,
 } from '../../../services/circle/circle/circle.service';
 import { UsersService } from '../../../services/users/users.service';
+import { TransactionsService } from '../../../services/transactions/transactions.service';
 
 interface CreateUserDto {
   userId?: string;
@@ -64,6 +65,7 @@ export class WalletController {
   constructor(
     private readonly circleService: CircleService,
     private readonly usersService: UsersService,
+    private readonly transactionsService: TransactionsService,
   ) {}
 
   @Get('config')
@@ -586,6 +588,7 @@ export class WalletController {
   async writeContract(
     @Headers('x-user-token') userToken: string,
     @Body() body: ContractWriteDto,
+    @Req() req: any,
   ) {
     try {
       if (!userToken) {
@@ -604,6 +607,63 @@ export class WalletController {
         body.args,
         body.value || '0',
       );
+
+      // Decode JWT to get Circle user ID
+      try {
+        const tokenParts = userToken.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(
+            Buffer.from(tokenParts[1], 'base64').toString('utf-8')
+          );
+          const circleUserId = payload.sub;
+
+          if (circleUserId) {
+            const dbUser = await this.usersService.findByCircleUserId(circleUserId);
+            
+            if (dbUser && result?.transactionId) {
+              // Determine transaction type from function name
+              let transactionType = 'contract_interaction';
+              let amount: string | undefined;
+              let tokenSymbol: string | undefined;
+
+              if (body.functionName === 'deposit') {
+                transactionType = 'vault_deposit';
+                amount = body.args[0]?.toString();
+                tokenSymbol = 'USDC';
+              } else if (body.functionName === 'withdraw') {
+                transactionType = 'vault_withdraw';
+                amount = body.args[0]?.toString();
+                tokenSymbol = 'USDC';
+              } else if (body.functionName === 'approve') {
+                transactionType = 'token_approve';
+                amount = body.args[1]?.toString();
+                tokenSymbol = 'USDC';
+              }
+
+              // Store transaction
+              await this.transactionsService.createTransaction({
+                userId: dbUser.id,
+                transactionHash: result.transactionId,
+                transactionType,
+                blockchain: 'ARC-TESTNET',
+                contractAddress: body.contractAddress,
+                amount: amount ? (parseFloat(amount) / 1000000).toString() : undefined,
+                tokenSymbol,
+                walletId: body.walletId,
+                metadata: {
+                  functionName: body.functionName,
+                  args: body.args,
+                },
+              });
+
+              this.logger.log(`Transaction stored: ${result.transactionId} (${transactionType})`);
+            }
+          }
+        }
+      } catch (storageError) {
+        this.logger.error('Failed to store transaction:', storageError);
+        // Don't fail the request if storage fails
+      }
 
       return {
         success: true,
