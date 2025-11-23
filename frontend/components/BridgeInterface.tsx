@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useState, useEffect } from "react";
+import { useCircle, useWallets } from "@/lib/circle";
 import {
   useBridgeTransfer,
   useBridgeEstimates,
@@ -11,10 +11,30 @@ import {
   RISK_LEVEL_COLORS,
   type SupportedChainId,
 } from "@/lib/bridge";
-import { WalletConnectButton } from "./WalletConnectButton";
 
 export function BridgeInterface() {
-  const { address, isConnected } = useAccount();
+  const { userSession, isInitialized } = useCircle();
+  const { getWallets } = useWallets();
+  const [address, setAddress] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Get user's wallet address
+  useEffect(() => {
+    const fetchWallet = async () => {
+      if (userSession && isInitialized) {
+        try {
+          const wallets = await getWallets();
+          if (wallets && wallets.length > 0) {
+            setAddress(wallets[0].address);
+            setIsConnected(true);
+          }
+        } catch (error) {
+          console.error("Failed to fetch wallet:", error);
+        }
+      }
+    };
+    fetchWallet();
+  }, [userSession, isInitialized, getWallets]);
 
   const [sourceChainId, setSourceChainId] = useState<SupportedChainId | null>(
     null
@@ -66,8 +86,16 @@ export function BridgeInterface() {
 
         {/* Wallet Connection */}
         {!isConnected && (
-          <div className="mb-6">
-            <WalletConnectButton />
+          <div className="mb-6 text-center py-8">
+            <p className="text-gray-400 mb-4">
+              Please sign in with your Circle wallet to use the bridge
+            </p>
+            <a
+              href="/auth/signup"
+              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Sign In / Create Account
+            </a>
           </div>
         )}
 
@@ -249,15 +277,6 @@ export function BridgeInterface() {
                         {status.transactionHash.slice(-8)}
                       </a>
                     </div>
-                    {status.attestationHash && (
-                      <div>
-                        <span className="text-gray-400">Attestation: </span>
-                        <span className="text-blue-400 break-all">
-                          {status.attestationHash.slice(0, 10)}...
-                          {status.attestationHash.slice(-8)}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 )}
                 {(status.status === "completed" ||
@@ -295,49 +314,6 @@ export function BridgeInterface() {
             Connect your wallet to start bridging USDC
           </div>
         )}
-      </div>
-
-      {/* Info Section */}
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">How It Works</h3>
-        <div className="space-y-3 text-sm text-gray-300">
-          <div className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
-              1
-            </span>
-            <p>
-              Select your source chain and destination chain based on the vault
-              strategy you want to access
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
-              2
-            </span>
-            <p>
-              Enter the amount of USDC you want to bridge. The transfer uses
-              Circle's CCTP for secure, native USDC transfers
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
-              3
-            </span>
-            <p>
-              Your USDC will be burned on the source chain and minted on the
-              destination chain, typically taking 15-25 minutes
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
-              4
-            </span>
-            <p>
-              Once completed, you can deposit your USDC into the vault on the
-              destination chain
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

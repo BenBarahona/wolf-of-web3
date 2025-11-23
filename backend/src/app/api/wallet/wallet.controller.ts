@@ -9,6 +9,7 @@ import {
   HttpStatus,
   Logger,
   Req,
+  Param,
 } from '@nestjs/common';
 import {
   CircleService,
@@ -533,6 +534,120 @@ export class WalletController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  @Get('transaction/:transactionId/status')
+  async getTransactionStatus(
+    @Headers('x-user-token') userToken: string,
+    @Param('transactionId') transactionId: string,
+  ) {
+    try {
+      if (!userToken) {
+        throw new HttpException(
+          'User token is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const status = await this.circleService.getTransactionStatus(
+        userToken,
+        transactionId,
+      );
+
+      return {
+        success: true,
+        data: status,
+      };
+    } catch (error: any) {
+      this.logger.error('Error getting transaction status:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('transaction/contract')
+  async createContractTransaction(
+    @Headers('x-user-token') userToken: string,
+    @Body() body: {
+      walletId: string;
+      contractAddress: string;
+      abiFunctionSignature: string;
+      abiParameters: any[];
+      amount?: string;
+      feeLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+    },
+  ) {
+    try {
+      if (!userToken) {
+        throw new HttpException(
+          'User token is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      this.logger.log(`Creating contract transaction: ${body.abiFunctionSignature} at ${body.contractAddress}`);
+
+      const abi = [
+        {
+          name: body.abiFunctionSignature.split('(')[0],
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: this.parseAbiInputs(body.abiFunctionSignature),
+          outputs: []
+        }
+      ];
+
+      const functionName = body.abiFunctionSignature.split('(')[0];
+
+      this.logger.log(`Function: ${functionName}`);
+      this.logger.log(`Parameters: ${JSON.stringify(body.abiParameters)}`);
+
+      const result = await this.circleService.createContractExecutionTransaction(
+        userToken,
+        body.walletId,
+        body.contractAddress,
+        abi,
+        functionName,
+        body.abiParameters,
+        body.amount || '0',
+      );
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error: any) {
+      this.logger.error('Error creating contract transaction:', error);
+      this.logger.error('Error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+      });
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to create contract transaction',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  private parseAbiInputs(signature: string): any[] {
+    const match = signature.match(/\((.*)\)/);
+    if (!match || !match[1]) return [];
+    
+    const types = match[1].split(',').map(t => t.trim());
+    return types.map((type, index) => ({
+      name: `param${index}`,
+      type: type,
+      internalType: type,
+    }));
   }
 
   private serializeBigInt(value: any): any {

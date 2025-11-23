@@ -1,68 +1,102 @@
 /**
- * React hooks for Circle Bridge Kit integration
+ * Bridge hooks using backend Bridge Kit service
+ * 
+ * This uses the backend's Bridge Kit implementation which handles:
+ * - CCTP bridging with external wallet (BRIDGE_WALLET_PRIVATE_KEY)
+ * - Contract interactions
+ * - Attestation polling
+ * - Cross-chain USDC transfers
  */
 
-import { useState, useCallback } from 'react';
-import { useAccount, useWalletClient } from 'wagmi';
-import {
-  initiateBridgeTransfer,
-  checkBridgeStatus,
-  estimateTransferTime,
-  estimateBridgeFee,
-  type BridgeTransferParams,
-  type BridgeTransferStatus,
-} from './bridge.service';
+import { useState, useCallback, useEffect } from 'react';
+import { useCircle, useWallets } from '@/lib/circle';
 import type { SupportedChainId } from './chains.config';
+import {
+  bridgeTransfer,
+  getBridgeEstimate,
+  getBridgeInfo,
+  checkBridgeHealth,
+  type BridgeTransferResponse,
+  type BridgeEstimate,
+} from './bridge-api';
 
 export interface UseBridgeTransferResult {
-  transfer: (params: Omit<BridgeTransferParams, 'senderAddress'>) => Promise<void>;
-  status: BridgeTransferStatus | null;
+  transfer: (params: {
+    sourceChainId: SupportedChainId;
+    destinationChainId: SupportedChainId;
+    amount: string;
+    recipientAddress: `0x${string}`;
+  }) => Promise<void>;
+  status: {
+    status: 'idle' | 'pending' | 'completed' | 'failed';
+    message: string;
+    transactionHash?: string;
+  } | null;
   isLoading: boolean;
   error: Error | null;
   reset: () => void;
 }
 
 export function useBridgeTransfer(): UseBridgeTransferResult {
-  const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
+  const { userSession } = useCircle();
+  const { getWallets } = useWallets();
   
-  const [status, setStatus] = useState<BridgeTransferStatus | null>(null);
+  const [status, setStatus] = useState<{
+    status: 'idle' | 'pending' | 'completed' | 'failed';
+    message: string;
+    transactionHash?: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const transfer = useCallback(
-    async (params: Omit<BridgeTransferParams, 'senderAddress'>) => {
-      if (!address) {
-        setError(new Error('Wallet not connected'));
-        return;
-      }
-
-      if (!walletClient) {
-        setError(new Error('Wallet client not available'));
+    async (params: {
+      sourceChainId: SupportedChainId;
+      destinationChainId: SupportedChainId;
+      amount: string;
+      recipientAddress: `0x${string}`;
+    }) => {
+      if (!userSession) {
+        setError(new Error('User not logged in. Please sign in with Circle wallet.'));
         return;
       }
 
       setIsLoading(true);
       setError(null);
-      setStatus({ status: 'pending', message: 'Initiating transfer...' });
+      setStatus({ status: 'pending', message: 'Initiating bridge transfer...' });
 
       try {
-        const result = await initiateBridgeTransfer(
-          {
-            ...params,
-            senderAddress: address,
-          },
-          walletClient as any
-        );
+        // Validate chains are different
+        if (params.sourceChainId === params.destinationChainId) {
+          throw new Error('Source and destination chains must be different');
+        }
 
-        setStatus({
-          transactionHash: result.transactionHash,
-          attestationHash: result.attestationHash,
-          status: 'attested',
-          message: 'Transfer submitted, waiting for attestation...',
+        // Get user's wallet
+        const wallets = await getWallets();
+        if (!wallets || wallets.length === 0) {
+          throw new Error('No wallet found. Please create a wallet first.');
+        }
+
+        setStatus({ status: 'pending', message: 'Calling Bridge Kit service...' });
+
+        // Call backend Bridge Kit API
+        const result: BridgeTransferResponse = await bridgeTransfer({
+          sourceChainId: params.sourceChainId,
+          destinationChainId: params.destinationChainId,
+          amount: params.amount,
+          recipientAddress: params.recipientAddress,
         });
 
-        pollTransferStatus(result.attestationHash, params.destinationChainId);
+        if (result.success) {
+          setStatus({
+            status: 'completed',
+            message: result.message,
+            transactionHash: result.transactionHash,
+          });
+        } else {
+          throw new Error(result.message);
+        }
+
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Transfer failed');
         setError(error);
@@ -74,44 +108,7 @@ export function useBridgeTransfer(): UseBridgeTransferResult {
         setIsLoading(false);
       }
     },
-    [address, walletClient]
-  );
-
-  const pollTransferStatus = useCallback(
-    async (attestationHash: string, destinationChainId: SupportedChainId) => {
-      let attempts = 0;
-      const maxAttempts = 60;
-
-      const poll = async () => {
-        if (attempts >= maxAttempts) {
-          setStatus({
-            attestationHash,
-            status: 'failed',
-            message: 'Transfer status check timed out',
-          });
-          return;
-        }
-
-        attempts++;
-
-        try {
-          const newStatus = await checkBridgeStatus(attestationHash, destinationChainId);
-          setStatus(newStatus);
-
-          if (newStatus.status === 'completed' || newStatus.status === 'failed') {
-            return;
-          }
-
-          setTimeout(poll, 30000);
-        } catch (err) {
-          console.error('Status poll error:', err);
-          setTimeout(poll, 30000);
-        }
-      };
-
-      poll();
-    },
-    []
+    [userSession, getWallets]
   );
 
   const reset = useCallback(() => {
@@ -129,51 +126,76 @@ export function useBridgeTransfer(): UseBridgeTransferResult {
   };
 }
 
+/**
+ * Hook to get bridge estimates from backend
+ */
 export function useBridgeEstimates(
   sourceChainId: SupportedChainId | null,
   destinationChainId: SupportedChainId | null,
   amount: string
 ) {
-  const estimatedTime = sourceChainId && destinationChainId
-    ? estimateTransferTime(sourceChainId, destinationChainId)
-    : null;
-
-  const estimatedFee = amount ? estimateBridgeFee(amount) : null;
-
-  return {
-    estimatedTime,
-    estimatedFee,
-  };
-}
-
-export function useBridgeStatus(
-  attestationHash: string | null,
-  destinationChainId: SupportedChainId | null
-) {
-  const [status, setStatus] = useState<BridgeTransferStatus | null>(null);
+  const [estimate, setEstimate] = useState<BridgeEstimate | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const checkStatus = useCallback(async () => {
-    if (!attestationHash || !destinationChainId) {
+  useEffect(() => {
+    if (!sourceChainId || !destinationChainId || !amount) {
+      setEstimate(null);
       return;
     }
 
     setIsLoading(true);
-
-    try {
-      const newStatus = await checkBridgeStatus(attestationHash, destinationChainId);
-      setStatus(newStatus);
-    } catch (error) {
-      console.error('Status check error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [attestationHash, destinationChainId]);
+    getBridgeEstimate(sourceChainId, destinationChainId, amount)
+      .then(setEstimate)
+      .catch((err) => {
+        console.error('Failed to get bridge estimate:', err);
+        setEstimate(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [sourceChainId, destinationChainId, amount]);
 
   return {
-    status,
+    estimatedTime: estimate?.estimatedTime ?? null,
+    estimatedFee: estimate?.estimatedFee ?? null,
     isLoading,
-    checkStatus,
   };
 }
 
+/**
+ * Hook to get bridge service info
+ */
+export function useBridgeInfo() {
+  const [info, setInfo] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    getBridgeInfo()
+      .then(setInfo)
+      .catch(setError)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return { info, isLoading, error };
+}
+
+/**
+ * Hook to check bridge health
+ */
+export function useBridgeHealth() {
+  const [health, setHealth] = useState<any>(null);
+  const [isHealthy, setIsHealthy] = useState(false);
+
+  useEffect(() => {
+    checkBridgeHealth()
+      .then((data) => {
+        setHealth(data);
+        setIsHealthy(data.status === 'healthy');
+      })
+      .catch((err) => {
+        console.error('Bridge health check failed:', err);
+        setIsHealthy(false);
+      });
+  }, []);
+
+  return { health, isHealthy };
+}

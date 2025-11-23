@@ -1,12 +1,52 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCircle } from "@/lib/circle";
+import { useEffect, useState } from "react";
+import { useCircle, useWallets } from "@/lib/circle";
 import BottomNav from "@/components/BottomNav";
 
 export default function Settings() {
   const router = useRouter();
-  const { clearSession } = useCircle();
+  const { clearSession, userSession } = useCircle();
+  const { getWallets } = useWallets();
+
+  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [isLoadingWallet, setIsLoadingWallet] = useState(true);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
+  useEffect(() => {
+    const loadWalletAddress = async () => {
+      if (!userSession) {
+        setIsLoadingWallet(false);
+        return;
+      }
+
+      try {
+        const wallets = await getWallets();
+        if (wallets && wallets.length > 0) {
+          setWalletAddress(wallets[0].address);
+        }
+      } catch (err) {
+        console.error("Failed to load wallet address:", err);
+      } finally {
+        setIsLoadingWallet(false);
+      }
+    };
+
+    loadWalletAddress();
+  }, [userSession, getWallets]);
+
+  const handleCopyAddress = async () => {
+    if (!walletAddress) return;
+
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy address:", err);
+    }
+  };
 
   const handleLogout = () => {
     clearSession();
@@ -61,6 +101,77 @@ export default function Settings() {
                 </svg>
               </div>
             </button>
+          </div>
+
+          {/* Wallet Address Section */}
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Circle Smart Wallet
+            </h3>
+            <div className="bg-white rounded-lg p-4">
+              {isLoadingWallet ? (
+                <div className="flex items-center justify-center py-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                </div>
+              ) : walletAddress ? (
+                <>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 mr-3">
+                      <p className="text-xs font-medium text-gray-500 mb-1">
+                        Wallet Address
+                      </p>
+                      <p className="text-sm font-mono text-gray-900 break-all">
+                        {walletAddress}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleCopyAddress}
+                      className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Copy address"
+                    >
+                      {copiedAddress ? (
+                        <svg
+                          className="w-5 h-5 text-green-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-5 h-5 text-gray-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  {copiedAddress && (
+                    <p className="text-xs text-green-600 font-medium">
+                      Address copied to clipboard!
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 py-2">
+                  No wallet address found
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="bg-gray-50 rounded-xl p-4">
