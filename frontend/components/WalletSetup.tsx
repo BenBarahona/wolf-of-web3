@@ -9,6 +9,7 @@ import {
   useCreateWallet,
   useWallets,
   useSocialLogin,
+  usePreferences,
 } from "@/lib/circle";
 import * as circleApi from "@/lib/circle/api";
 
@@ -31,6 +32,7 @@ export default function WalletSetup() {
   const { getWallets } = useWallets();
   const { initializeSocialLogin, loginWithFacebook, loginWithGoogle } =
     useSocialLogin();
+  const { savePreferences, completeOnboarding } = usePreferences();
 
   const [step, setStep] = useState<SetupStep>("initial");
   const [authMode, setAuthMode] = useState<AuthMode>("signup");
@@ -588,7 +590,30 @@ export default function WalletSetup() {
 
             <div className="space-y-3">
               <button
-                onClick={() => router.push("/dashboard")}
+                onClick={async () => {
+                  // Save preferences if they exist in session storage
+                  try {
+                    const prefsJson = sessionStorage.getItem(
+                      "onboardingPreferences"
+                    );
+                    if (prefsJson && userSession?.userToken) {
+                      const prefs = JSON.parse(prefsJson);
+                      await savePreferences(userSession.userToken, prefs);
+                      await completeOnboarding(userSession.userToken);
+                      // Clear session storage after saving
+                      sessionStorage.removeItem("onboardingPreferences");
+                      sessionStorage.removeItem("investmentPreferences");
+                      sessionStorage.removeItem("timeHorizon");
+                      sessionStorage.removeItem("riskPreference");
+                      sessionStorage.removeItem("selectedStrategy");
+                      sessionStorage.removeItem("signupEmail");
+                      sessionStorage.removeItem("signupUsername");
+                    }
+                  } catch (err) {
+                    console.error("Failed to save preferences:", err);
+                  }
+                  router.push("/dashboard");
+                }}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all"
               >
                 Go to Dashboard
