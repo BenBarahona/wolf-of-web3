@@ -47,7 +47,7 @@ RUN yarn install
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.ts ./
+# 👇 Tampoco copiamos next.config.ts acá
 
 EXPOSE 3000
 
