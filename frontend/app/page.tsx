@@ -7,8 +7,6 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to onboarding on first load
-    // In production, this would check if user is logged in and has completed onboarding
     router.push("/onboarding");
   }, [router]);
 
