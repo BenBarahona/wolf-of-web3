@@ -39,6 +39,23 @@ interface AcquireTokenDto {
   userId: string;
 }
 
+interface ContractReadDto {
+  contractAddress: string;
+  abi: any[];
+  functionName: string;
+  args: any[];
+  chainId?: number;
+}
+
+interface ContractWriteDto {
+  walletId: string;
+  contractAddress: string;
+  abi: any[];
+  functionName: string;
+  args: any[];
+  value?: string;
+}
+
 @Controller('api/wallet')
 export class WalletController {
   private readonly logger = new Logger(WalletController.name);
@@ -498,6 +515,91 @@ export class WalletController {
       };
     } catch (error: any) {
       this.logger.error('Error creating transaction:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  private serializeBigInt(value: any): any {
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    if (Array.isArray(value)) {
+      return value.map(item => this.serializeBigInt(item));
+    }
+    if (value !== null && typeof value === 'object') {
+      const serialized: any = {};
+      for (const key in value) {
+        serialized[key] = this.serializeBigInt(value[key]);
+      }
+      return serialized;
+    }
+    return value;
+  }
+
+  @Post('contract/read')
+  async readContract(@Body() body: ContractReadDto) {
+    try {
+      const result = await this.circleService.readContract(
+        body.contractAddress,
+        body.abi,
+        body.functionName,
+        body.args,
+        body.chainId,
+      );
+
+      const serializedResult = this.serializeBigInt(result);
+
+      return {
+        success: true,
+        data: serializedResult,
+      };
+    } catch (error: any) {
+      this.logger.error('Error reading contract:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('contract/write')
+  async writeContract(
+    @Headers('x-user-token') userToken: string,
+    @Body() body: ContractWriteDto,
+  ) {
+    try {
+      if (!userToken) {
+        throw new HttpException(
+          'User token is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const result = await this.circleService.createContractExecutionTransaction(
+        userToken,
+        body.walletId,
+        body.contractAddress,
+        body.abi,
+        body.functionName,
+        body.args,
+        body.value || '0',
+      );
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error: any) {
+      this.logger.error('Error writing to contract:', error);
       throw new HttpException(
         {
           success: false,
