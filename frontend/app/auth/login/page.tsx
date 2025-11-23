@@ -36,16 +36,24 @@ export default function LoginPage() {
 
       setUserSession(userData);
 
-      // For returning users, we don't need PIN verification at login.
-      // The SDK will automatically prompt for PIN when accessing protected resources.
-      const userWallets = await getWallets();
+      const userWallets = await circleApi.listWallets(userData.userToken);
 
-      if (userWallets && userWallets.length > 0) {
+      if (userWallets.wallets && userWallets.wallets.length > 0) {
+        console.log("Login successful, redirecting to dashboard");
         router.push("/dashboard");
       } else {
-        throw new Error("No wallets found for this account");
+        // User exists but has no wallet - create one
+        console.log("No wallet found, creating one...");
+        const newWallet = await circleApi.createWallet(
+          userData.userToken,
+          "ARC-TESTNET",
+          "SCA"
+        );
+        console.log("Wallet created successfully:", newWallet.address);
+        router.push("/dashboard");
       }
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(err.message || "Failed to login. Have you created an account?");
       setIsLoading(false);
     }

@@ -2,25 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  useCircle,
-  useCreateUser,
-  useSetupPIN,
-  useWallets,
-} from "@/lib/circle";
+import { useCircle, useCreateUser, useSetupPIN } from "@/lib/circle";
+import * as circleApi from "@/lib/circle/api";
 
-type SetupStep =
-  | "initial"
-  | "creating-user"
-  | "setting-pin"
-  | "creating-wallet";
+type SetupStep = "initial" | "creating-user" | "setting-pin";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { isInitialized } = useCircle();
+  const { isInitialized, userSession } = useCircle();
   const { createUser } = useCreateUser();
   const { setupPIN } = useSetupPIN();
-  const { getWallets } = useWallets();
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -67,22 +58,77 @@ export default function SignUpPage() {
       }
       console.log("PIN setup successful");
 
-      setStep("creating-wallet");
-      const userWallets = await getWallets();
-
-      if (!userWallets || userWallets.length === 0) {
-        throw new Error("No wallets found after creation");
+      if (!userSession) {
+        throw new Error("No user session found after PIN setup");
       }
-      console.log("Wallet created successfully:", userWallets[0].address);
 
+      // Store signup data for later use
       sessionStorage.setItem("signupEmail", email);
       sessionStorage.setItem("signupUsername", username);
 
+      // Immediately redirect to onboarding for better UX
       router.push("/questionnaire/investment");
+
+      // Create wallet in the background (non-blocking)
+      // The wallet will be available by the time they finish onboarding
+      createWalletInBackground(userSession.userToken);
     } catch (err: any) {
-      console.error("Wallet creation error:", err);
-      setError(err.message || "Failed to create wallet. Please try again.");
+      console.error("PIN setup error:", err);
+      setError(err.message || "Failed to set up PIN. Please try again.");
       setStep("setting-pin");
+    }
+  };
+
+  const createWalletInBackground = async (userToken: string) => {
+    try {
+      console.log("Creating wallet in background...");
+
+      // Wait for Circle to process PIN setup
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Check user status to ensure PIN is enabled
+      let retries = 3;
+      let userReady = false;
+
+      while (retries > 0 && !userReady) {
+        try {
+          const userStatus = await circleApi.getUserStatus(userToken);
+          console.log("Background wallet creation - User status:", userStatus);
+
+          if (userStatus.pinStatus === "ENABLED") {
+            userReady = true;
+            console.log("User PIN is enabled, proceeding with wallet creation");
+          } else {
+            console.log(`PIN status: ${userStatus.pinStatus}, waiting...`);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            retries--;
+          }
+        } catch (statusError: any) {
+          console.error("Error checking user status:", statusError);
+          retries--;
+          if (retries > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
+        }
+      }
+
+      if (!userReady) {
+        console.error(
+          "Background wallet creation: PIN not enabled after retries"
+        );
+        return;
+      }
+
+      const newWallet = await circleApi.createWallet(
+        userToken,
+        "ARC-TESTNET",
+        "SCA"
+      );
+      console.log("Background wallet created successfully:", newWallet.address);
+    } catch (err: any) {
+      console.error("Background wallet creation error:", err);
+      // Don't show error to user since they're already in onboarding
+      // Wallet will be created when they try to use it later
     }
   };
 
@@ -164,16 +210,6 @@ export default function SignUpPage() {
             >
               Set PIN
             </button>
-          </div>
-        )}
-
-        {step === "creating-wallet" && (
-          <div className="text-center py-12 space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-gray-700 font-medium">
-              Creating your Smart Wallet...
-            </p>
-            <p className="text-sm text-gray-500">This may take a few moments</p>
           </div>
         )}
 
