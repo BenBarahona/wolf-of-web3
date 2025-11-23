@@ -1,3 +1,4 @@
+// src/app/api/wallet/wallet.controller.ts
 import {
   Controller,
   Post,
@@ -78,8 +79,8 @@ export class WalletController {
     try {
       // Create user in Circle
       const circleResult = await this.circleService.createUser(body.userId);
-      
-      // Storing in db
+
+      // Storing in db (legacy Circle flow)
       const dbUser = await this.usersService.createUser(
         circleResult.userId,
         body.email,
@@ -142,9 +143,19 @@ export class WalletController {
         );
       }
 
+      // Este endpoint es específico del flujo Circle:
+      // nos aseguramos de que el usuario tenga circleUserId
+      const circleUserId = dbUser.circleUserId;
+      if (!circleUserId) {
+        throw new HttpException(
+          'User does not have a Circle account configured',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       // We need a new session token from Circle
       const sessionData = await this.circleService.acquireSessionToken(
-        dbUser.circleUserId,
+        circleUserId,
       );
 
       // For login, we use restorePin to verify the existing PIN (not initializeUser)
@@ -167,7 +178,7 @@ export class WalletController {
       return {
         success: true,
         data: {
-          userId: dbUser.circleUserId,
+          userId: circleUserId,
           userToken: sessionData.userToken,
           encryptionKey: sessionData.encryptionKey,
           challengeId: challengeId,
@@ -175,7 +186,7 @@ export class WalletController {
       };
     } catch (error: any) {
       this.logger.error('Error logging in user:', error);
-      
+
       if (error instanceof HttpException) {
         throw error;
       }
@@ -508,4 +519,3 @@ export class WalletController {
     }
   }
 }
-

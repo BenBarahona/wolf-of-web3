@@ -1,0 +1,15 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Lendoor Dev",
+    "homeUrl": "https://8lh8dmll-3000.brs.devtunnels.ms/",
+    "iconUrl": "https://8lh8dmll-3000.brs.devtunnels.ms/image.jpg",
+    "splashImageUrl": "https://8lh8dmll-3000.brs.devtunnels.ms/image.jpg",
+    "splashBackgroundColor": "#000000"
+  }
+}

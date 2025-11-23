@@ -1,3 +1,4 @@
+// src/lib/circle/CircleProvider.tsx
 "use client";
 
 import React, {
@@ -10,6 +11,7 @@ import React, {
 import { W3SSdk } from "@circle-fin/w3s-pw-web-sdk";
 import { getCircleConfig } from "./api";
 import type { UserSession, ChallengeResult } from "./types";
+import { WALLET_PROVIDER, WalletProvider } from "../walletProvider";
 
 interface CircleContextType {
   sdk: W3SSdk | null;
@@ -23,6 +25,7 @@ interface CircleContextType {
   ) => void;
   clearSession: () => void;
   deviceId: string | null;
+  walletProvider: WalletProvider;
 }
 
 const CircleContext = createContext<CircleContextType>({
@@ -34,6 +37,7 @@ const CircleContext = createContext<CircleContextType>({
   executeChallenge: () => {},
   clearSession: () => {},
   deviceId: null,
+  walletProvider: WALLET_PROVIDER,
 });
 
 export const useCircle = () => {
@@ -55,7 +59,6 @@ export function CircleProvider({ children }: CircleProviderProps) {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [userSession, setUserSessionState] = useState<UserSession | null>(
     () => {
-      // Try to load session from localStorage on mount
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem("circle_user_session");
         if (stored) {
@@ -73,10 +76,11 @@ export function CircleProvider({ children }: CircleProviderProps) {
   useEffect(() => {
     const initSDK = async () => {
       try {
+        console.log("[Circle] Wallet provider:", WALLET_PROVIDER);
+
         const config = await getCircleConfig();
         setAppId(config.appId);
 
-        // Get stored device token and encryption key for social logins
         const deviceToken =
           typeof window !== "undefined"
             ? localStorage.getItem("deviceToken")
@@ -216,6 +220,7 @@ export function CircleProvider({ children }: CircleProviderProps) {
     executeChallenge,
     clearSession,
     deviceId,
+    walletProvider: WALLET_PROVIDER,
   };
 
   return (
