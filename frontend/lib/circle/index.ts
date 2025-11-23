@@ -12,6 +12,8 @@ export {
   useTransaction,
   useSocialLogin,
 } from './hooks';
+export { useActivities } from './useActivities';
+export { useTransactions } from './useTransactions';
 export type {
   CircleConfig,
   UserSession,
@@ -21,4 +23,6 @@ export type {
   UserStatus,
   Balance,
 } from './types';
+export type { Activity } from './useActivities';
+export type { Transaction } from './useTransactions';
 
