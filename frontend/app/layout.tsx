@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CircleProvider } from "@/lib/circle";
+import { Web3Provider } from "@/lib/contracts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +30,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <CircleProvider>{children}</CircleProvider>
+        <Web3Provider>
+          <CircleProvider>{children}</CircleProvider>
+        </Web3Provider>
       </body>
     </html>
   );

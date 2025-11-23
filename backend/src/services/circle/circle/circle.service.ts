@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { createPublicClient, http, encodeFunctionData } from 'viem';
 
 export interface CreateUserResponse {
   userId: string;
@@ -455,6 +456,116 @@ export class CircleService {
       );
       throw new Error(
         `Failed to create transaction: ${error.response?.data?.message || error.message}`,
+      );
+    }
+  }
+
+  async readContract(
+    contractAddress: string,
+    abi: any[],
+    functionName: string,
+    args: any[],
+    chainId: number = 5042002,
+  ): Promise<any> {
+    try {
+      this.logger.log(`Reading contract ${contractAddress}.${functionName}`);
+
+      const arcChain = {
+        id: 5042002,
+        name: 'Arc L2 Testnet',
+        network: 'arc-testnet',
+        nativeCurrency: {
+          decimals: 18,
+          name: 'Ethereum',
+          symbol: 'ETH',
+        },
+        rpcUrls: {
+          default: {
+            http: ['https://rpc.testnet.arc.network'],
+          },
+          public: {
+            http: ['https://rpc.testnet.arc.network'],
+          },
+        },
+      };
+
+      const client = createPublicClient({
+        chain: arcChain,
+        transport: http(),
+      });
+
+      const result = await client.readContract({
+        address: contractAddress as `0x${string}`,
+        abi,
+        functionName,
+        args,
+      });
+
+      return result;
+    } catch (error: any) {
+      this.logger.error('Error reading contract:', error);
+      throw new Error(`Failed to read contract: ${error.message}`);
+    }
+  }
+
+  async createContractExecutionTransaction(
+    userToken: string,
+    walletId: string,
+    contractAddress: string,
+    abi: any[],
+    functionName: string,
+    args: any[],
+    value: string = '0',
+  ): Promise<{ challengeId: string; transactionId: string }> {
+    try {
+      this.logger.log(
+        `Creating contract execution transaction: ${contractAddress}.${functionName}`,
+      );
+
+      const callData = encodeFunctionData({
+        abi,
+        functionName,
+        args,
+      });
+
+      this.logger.debug(`Encoded call data: ${callData}`);
+
+      const idempotencyKey = uuidv4();
+      this.logger.debug(`Generated idempotencyKey: ${idempotencyKey}`);
+
+      const response = await axios.post(
+        `${this.baseUrl}/user/transactions/contractExecution`,
+        {
+          idempotencyKey,
+          walletId,
+          contractAddress,
+          callData,
+          amount: value,
+          feeLevel: 'MEDIUM',
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+            'X-User-Token': userToken,
+          },
+        },
+      );
+
+      const data = response.data.data;
+      this.logger.log(`Contract execution transaction created: ${data.id}`);
+
+      return {
+        challengeId: data.challengeId,
+        transactionId: data.id,
+      };
+    } catch (error: any) {
+      this.logger.error(
+        'Error creating contract execution:',
+        error.response?.data || error,
+      );
+      throw new Error(
+        `Failed to create contract execution: ${error.response?.data?.message || error.message}`,
       );
     }
   }
