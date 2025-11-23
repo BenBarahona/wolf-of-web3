@@ -13,6 +13,7 @@ RUN apt-get update \
 
 # Provider fijo para WORLDCOIN (build-time)
 ENV NEXT_PUBLIC_WALLET_PROVIDER=worldcoin
+ENV NEXT_PUBLIC_APP_BASE_URL=https://worldcoin.wolf-of-web3.xyz
 
 COPY . .
 
