@@ -13,7 +13,7 @@ RUN apt-get update \
 
 # Provider fijo para CELO (build-time)
 ENV NEXT_PUBLIC_WALLET_PROVIDER=celo
-ENV NEXT_PUBLIC_APP_BASE_URL=https://celo.wolf-of-web3.xyz
+ENV NEXT_PUBLIC_APP_BASE_URL=https://celo-chain.wolf-of-web3.xyz
 
 # Copiamos TODO el proyecto (incluye next.config.ts)
 COPY . .

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 const APP_BASE_URL =
-  process.env.NEXT_PUBLIC_APP_BASE_URL || "https://celo.wolf-of-web3.xyz";
+  process.env.NEXT_PUBLIC_APP_BASE_URL || "https://celo-chain.wolf-of-web3.xyz";
 
 const miniAppEmbed = {
   version: "1",
