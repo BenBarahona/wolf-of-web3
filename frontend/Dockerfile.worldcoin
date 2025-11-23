@@ -1,0 +1,60 @@
+# Etapa 1: Build
+FROM node:20-slim AS builder
+LABEL com.centurylinklabs.watchtower.enable="true"
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ curl \
+  && apt-get clean && rm -rf /var/lib/apt/lists/* \
+  && corepack enable \
+  && corepack prepare yarn@3.2.3 --activate \
+  && yarn set version 3.2.3
+
+# Provider fijo para WORLDCOIN (build-time)
+ENV NEXT_PUBLIC_WALLET_PROVIDER=worldcoin
+ENV NEXT_PUBLIC_APP_BASE_URL=https://worldcoin.wolf-of-web3.xyz
+
+COPY . .
+
+RUN yarn install
+
+ENV NEXT_PUBLIC_API_URL=https://api.wolf-of-web3.xyz
+ENV NEXT_PUBLIC_CIRCLE_APP_ID=5300d92b-3cff-50e4-b75e-ccb5fe0270d8
+ENV NEXT_PUBLIC_FACEBOOK_APP_ID=2210580552770060
+
+RUN yarn build
+
+# Etapa 2: Runtime
+FROM node:20-slim
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && apt-get clean && rm -rf /var/lib/apt/lists/* \
+  && corepack enable \
+  && corepack prepare yarn@3.2.3 --activate \
+  && yarn set version 3.2.3
+
+ENV NODE_ENV=production
+ENV NEXT_PUBLIC_WALLET_PROVIDER=worldcoin
+ENV NEXT_PUBLIC_API_URL=https://api.wolf-of-web3.xyz
+ENV NEXT_PUBLIC_CIRCLE_APP_ID=5300d92b-3cff-50e4-b75e-ccb5fe0270d8
+ENV NEXT_PUBLIC_FACEBOOK_APP_ID=2210580552770060
+
+# 🔹 Igual que en CELO: copiamos entorno de Yarn del build
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/yarn.lock ./
+COPY --from=builder /app/.yarnrc.yml ./
+COPY --from=builder /app/.yarn ./.yarn
+COPY --from=builder /app/node_modules ./node_modules
+
+COPY --from=builder /app/tsconfig.json ./
+COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+
+EXPOSE 3002
+
+CMD ["sh", "-c", "echo 'Starting Next on port 3002 (provider: worldcoin)'; HOSTNAME=0.0.0.0 PORT=3002 yarn start"]

@@ -1,3 +1,4 @@
+// src/lib/farcaster.tsx
 "use client";
 
 import React, {
@@ -8,6 +9,7 @@ import React, {
   PropsWithChildren,
 } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
+import { isCeloProvider } from "../walletProvider";
 
 type FarcasterState = {
   isMiniApp: boolean;
@@ -32,89 +34,68 @@ export function FarcasterProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<FarcasterState>(initialState);
 
   useEffect(() => {
+    // 👇 Si el provider NO es Celo, ignoramos Farcaster por completo
+    if (!isCeloProvider) {
+      setState({ isMiniApp: false, isReady: true });
+      return;
+    }
+
     const init = async () => {
       try {
-        // 1) Intentamos obtener contexto. Si falla, NO estamos en MiniApp.
-        let ctx: any;
-        try {
-          ctx = await (sdk as any).context;
-        } catch (e) {
-          console.log("[Farcaster] No context -> probablemente NO MiniApp:", e);
-          setState({
-            isMiniApp: false,
-            isReady: true,
-          });
+        if (typeof window === "undefined") {
+          setState({ isMiniApp: false, isReady: true });
           return;
         }
 
+        // 1) Detectar si realmente estamos en un MiniApp
+        const inMiniApp = await sdk.isInMiniApp?.();
+        console.log("[Farcaster] isInMiniApp:", inMiniApp);
+
+        if (!inMiniApp) {
+          setState({ isMiniApp: false, isReady: true });
+          return;
+        }
+
+        // 2) Obtener contexto (user, etc.)
+        const ctx: any = await sdk.context;
         const user = ctx?.user;
-        if (!user) {
-          // Sin user en el contexto => lo tratamos como no-MiniApp
-          setState({
-            isMiniApp: false,
-            isReady: true,
-          });
-          return;
-        }
 
-        // 2) Quick Auth -> conseguís un JWT (formato depende de la versión del SDK)
+        // 3) QuickAuth -> token opcional
         let authToken: string | undefined;
         try {
-          const tokenResult = await (sdk as any).quickAuth?.getToken?.();
-
-          if (typeof tokenResult === "string") {
-            authToken = tokenResult;
-          } else if (tokenResult && typeof tokenResult === "object") {
-            // probamos algunas keys típicas
-            authToken =
-              (tokenResult as any).token ??
-              (tokenResult as any).jwt ??
-              (tokenResult as any).accessToken ??
-              undefined;
+          const tokenResult: any = await sdk.quickAuth?.getToken?.();
+          if (tokenResult && typeof tokenResult === "object" && "token" in tokenResult) {
+            authToken = tokenResult.token;
           }
         } catch (e) {
-          console.warn(
-            "[Farcaster] quickAuth.getToken falló (no es grave):",
-            e
-          );
+          console.warn("[Farcaster] quickAuth.getToken falló (no grave):", e);
         }
 
-        // 3) Avisar que el MiniApp está listo
+        // 4) Muy importante: esconder el splash screen
         try {
           await sdk.actions.ready();
+          console.log("[Farcaster] sdk.actions.ready() OK");
         } catch (e) {
           console.warn("[Farcaster] sdk.actions.ready() falló:", e);
         }
 
-        // 4) Guardamos estado del usuario
+        // 5) Guardar info en el contexto
         setState({
           isMiniApp: true,
           isReady: true,
           fid: user?.fid,
           username: user?.username,
           displayName: user?.displayName,
-          // según versión puede ser pfpUrl o pfp.url, probamos ambos
           avatarUrl: user?.pfpUrl || user?.pfp?.url,
           authToken,
         });
       } catch (err) {
         console.error("[Farcaster] error inicializando MiniApp:", err);
-        setState({
-          isMiniApp: false,
-          isReady: true,
-        });
+        setState({ isMiniApp: false, isReady: true });
       }
     };
 
-    // Solo corre en el cliente
-    if (typeof window !== "undefined") {
-      void init();
-    } else {
-      setState({
-        isMiniApp: false,
-        isReady: true,
-      });
-    }
+    void init();
   }, []);
 
   return (

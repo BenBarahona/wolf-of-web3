@@ -10,10 +10,8 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  const isProd = process.env.NODE_ENV === 'production';
-
   app.enableCors({
-    origin: isProd ? 'https://lemon.lendoor.xyz' : '*',
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Token'],
   })
