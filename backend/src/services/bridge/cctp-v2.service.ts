@@ -127,6 +127,36 @@ const ERC20_ABI = [
   },
 ] as const;
 
+/**
+ * Helper function to convert BigInt values to strings for JSON serialization
+ * Recursively processes objects and arrays
+ */
+function sanitizeBigInts(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (typeof obj === 'bigint') {
+    return obj.toString();
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeBigInts);
+  }
+  
+  if (typeof obj === 'object') {
+    const sanitized: any = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        sanitized[key] = sanitizeBigInts(obj[key]);
+      }
+    }
+    return sanitized;
+  }
+  
+  return obj;
+}
+
 export interface CCTPV2BridgeRequest {
   fromChain: string;
   toChain: string;
@@ -313,6 +343,9 @@ export class CCTPV2Service {
 
       this.logger.log('CCTP V2 burn transaction completed');
 
+      // Sanitize receipt to convert BigInt values to strings for JSON serialization
+      const sanitizedReceipt = sanitizeBigInts(receipt);
+
       return {
         success: true,
         transactionHash: burnTx,
@@ -321,17 +354,21 @@ export class CCTPV2Service {
           sourceChain: request.fromChain,
           destChain: request.toChain,
           burnTxHash: burnTx,
-          receipt,
+          receipt: sanitizedReceipt,
           note: 'Attestation and minting on destination chain happens automatically. Check Circle Attestation API for status.',
           attestationAPI: 'https://iris-api-sandbox.circle.com/v1/attestations',
         },
       };
     } catch (error: any) {
       this.logger.error('CCTP V2 bridge transaction failed', error);
+      
+      // Sanitize error object in case it contains BigInts
+      const sanitizedError = sanitizeBigInts(error);
+      
       return {
         success: false,
         message: `CCTP V2 bridge failed: ${error?.message || 'Unknown error'}`,
-        details: error,
+        details: sanitizedError,
       };
     }
   }

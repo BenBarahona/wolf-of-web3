@@ -56,8 +56,9 @@ function getChainName(chainId: SupportedChainId): string {
   // Map to CCTP V2 chain names (must match backend cctp-v2.service.ts)
   const chainMap: Record<SupportedChainId, string> = {
     5042002: 'Arc Testnet',
-    11155111: 'Ethereum Sepolia', // Fixed: was incorrectly "Celo"
-    4801: 'World Chain Sepolia', // Fixed: was incorrectly "World"
+    11155111: 'Ethereum Sepolia',
+    84532: 'Base Sepolia',
+    4801: 'World Chain Sepolia',
   };
   return chainMap[chainId] || 'Unknown';
 }

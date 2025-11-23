@@ -3,9 +3,10 @@
  * API endpoints for Circle Bridge Kit integration
  */
 
-import { Controller, Post, Get, Body, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Body, Logger, Query } from '@nestjs/common';
 import { BridgeService, BridgeTransferRequest } from '../../../services/bridge/bridge.service';
 import { CCTPV2Service, CCTPV2BridgeRequest } from '../../../services/bridge/cctp-v2.service';
+import { GatewayService } from '../../../services/bridge/gateway.service';
 
 @Controller('api/bridge')
 export class BridgeController {
@@ -14,6 +15,7 @@ export class BridgeController {
   constructor(
     private readonly bridgeService: BridgeService,
     private readonly cctpV2Service: CCTPV2Service,
+    private readonly gatewayService: GatewayService,
   ) {}
 
   @Post('transfer')
@@ -88,6 +90,50 @@ export class BridgeController {
       status: 'operational',
       technology: 'Circle CCTP V2 (Direct Integration)',
       arcSupport: true,
+    };
+  }
+
+  /**
+   * CIRCLE GATEWAY ENDPOINTS
+   * Unified crosschain USDC balance management
+   */
+
+  @Get('gateway/info')
+  async getGatewayInfo() {
+    this.logger.log('Gateway info requested');
+    return this.gatewayService.getInfo();
+  }
+
+  @Get('gateway/balance')
+  async getGatewayBalance(@Query('address') address: string) {
+    if (!address) {
+      return {
+        success: false,
+        message: 'Address parameter is required',
+      };
+    }
+
+    this.logger.log(`Gateway balance requested for ${address}`);
+    try {
+      const summary = await this.gatewayService.getBalanceSummary(address);
+      return {
+        success: true,
+        data: summary,
+      };
+    } catch (error: any) {
+      this.logger.error('Error fetching gateway balance:', error);
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  @Get('gateway/domains')
+  async getGatewayDomains() {
+    return {
+      success: true,
+      domains: this.gatewayService.getSupportedDomains(),
     };
   }
 }

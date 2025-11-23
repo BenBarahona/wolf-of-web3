@@ -31,26 +31,52 @@ export const arcChain = {
   testnet: true,
 } as const satisfies Chain;
 
-export const celoChain = {
+// Note: This was incorrectly named "Celo" but is actually Ethereum Sepolia
+export const ethereumSepoliaChain = {
   id: 11155111,
-  name: 'Celo Sepolia',
+  name: 'Ethereum Sepolia',
   nativeCurrency: {
     decimals: 18,
-    name: 'Celo',
-    symbol: 'CELO',
+    name: 'Ethereum',
+    symbol: 'ETH',
   },
   rpcUrls: {
     default: {
-      http: ['https://celo-sepolia.g.alchemy.com/v2/07WgWBy375TBGHaooLi-g'],
+      http: ['https://ethereum-sepolia.publicnode.com'],
     },
     public: {
-      http: ['https://celo-sepolia.g.alchemy.com/v2/07WgWBy375TBGHaooLi-g'],
+      http: ['https://ethereum-sepolia.publicnode.com'],
     },
   },
   blockExplorers: {
     default: {
-      name: 'CeloScan',
-      url: 'https://sepolia.celoscan.io',
+      name: 'Etherscan',
+      url: 'https://sepolia.etherscan.io',
+    },
+  },
+  testnet: true,
+} as const satisfies Chain;
+
+export const baseSepoliaChain = {
+  id: 84532,
+  name: 'Base Sepolia',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ethereum',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://sepolia.base.org'],
+    },
+    public: {
+      http: ['https://sepolia.base.org'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'BaseScan',
+      url: 'https://sepolia.basescan.org',
     },
   },
   testnet: true,
@@ -81,13 +107,14 @@ export const worldChain = {
   testnet: true,
 } as const satisfies Chain;
 
-export const SUPPORTED_CHAINS = [arcChain, celoChain, worldChain] as const;
+export const SUPPORTED_CHAINS = [arcChain, ethereumSepoliaChain, baseSepoliaChain, worldChain] as const;
 
 export type SupportedChainId = typeof SUPPORTED_CHAINS[number]['id'];
 
 export const USDC_ADDRESSES: Record<SupportedChainId, `0x${string}`> = {
   [arcChain.id]: '0x3600000000000000000000000000000000000000',
-  [celoChain.id]: '0x01C5C0122039549AD1493B8220cABEdD739BC44E',
+  [ethereumSepoliaChain.id]: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+  [baseSepoliaChain.id]: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   [worldChain.id]: '0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88',
 };
 
@@ -100,13 +127,21 @@ export const VAULT_ADDRESSES = {
     riskLevel: 'low' as const,
     description: 'Low-risk lending strategy on Arc with stable yields',
   },
-  // Celo: Medium Risk Staking Vault
-  [celoChain.id]: {
-    name: 'Wolf Medium Risk Staking Vault',
-    symbol: 'wSTAKE-CELO',
-    address: '0x56C4c8dbb6E9598b90119686c40271a969e1eE44' as `0x${string}`,
-    riskLevel: 'medium' as const,
-    description: 'Medium-risk staking strategy on Celo',
+  // Ethereum Sepolia: Test vault (for bridging demo)
+  [ethereumSepoliaChain.id]: {
+    name: 'Bridge Demo Vault',
+    symbol: 'wBRIDGE-ETH',
+    address: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    riskLevel: 'low' as const,
+    description: 'Ethereum Sepolia bridging endpoint',
+  },
+  // Base Sepolia: Test vault (for bridging demo)
+  [baseSepoliaChain.id]: {
+    name: 'Bridge Demo Vault',
+    symbol: 'wBRIDGE-BASE',
+    address: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    riskLevel: 'low' as const,
+    description: 'Base Sepolia bridging endpoint',
   },
   // World: High Risk Meme Index Vault
   [worldChain.id]: {

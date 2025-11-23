@@ -1,6 +1,6 @@
 import { createConfig, http } from 'wagmi';
 import { ARC_CHAIN } from './wolfBaseLendingVault';
-import { arcChain, celoChain, worldChain } from '@/lib/bridge/chains.config';
+import { arcChain, ethereumSepoliaChain, baseSepoliaChain, worldChain } from '@/lib/bridge/chains.config';
 
 /**
  * Wagmi configuration for reading contract data.
@@ -11,11 +11,12 @@ import { arcChain, celoChain, worldChain } from '@/lib/bridge/chains.config';
  * 
  */
 export const wagmiConfig = createConfig({
-  chains: [arcChain, celoChain, worldChain],
+  chains: [arcChain, ethereumSepoliaChain, baseSepoliaChain, worldChain],
   connectors: [],
   transports: {
     [arcChain.id]: http(),
-    [celoChain.id]: http(),
+    [ethereumSepoliaChain.id]: http(),
+    [baseSepoliaChain.id]: http(),
     [worldChain.id]: http(),
   },
 });

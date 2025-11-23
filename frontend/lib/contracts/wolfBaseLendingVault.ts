@@ -1050,6 +1050,26 @@ export const CONTRACT_ADDRESSES = {
   // Arc L2 Testnet (Chain ID: 5042002)
   arc: {
     lowRiskLendingVault: (process.env.NEXT_PUBLIC_LOW_RISK_VAULT_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+    chainId: 5042002,
+    blockchain: 'ARC-TESTNET',
+  },
+  // World Chain Sepolia (Chain ID: 4801)
+  world: {
+    highRiskMemeIndexVault: '0x56C4c8dbb6E9598b90119686c40271a969e1eE44' as `0x${string}`,
+    chainId: 4801,
+    blockchain: 'WORLD-TESTNET',
+  },
+  // Base Sepolia (Chain ID: 84532)
+  base: {
+    testVault: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+    chainId: 84532,
+    blockchain: 'BASE-TESTNET',
+  },
+  // Celo Alfajores (Chain ID: 44787) - if you're using Celo
+  celo: {
+    stakingVault: (process.env.NEXT_PUBLIC_CELO_VAULT_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+    chainId: 44787,
+    blockchain: 'CELO-TESTNET',
   },
 } as const;
 

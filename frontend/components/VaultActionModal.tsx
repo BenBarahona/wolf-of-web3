@@ -11,16 +11,25 @@ import {
 import { useCircle } from "@/lib/circle";
 import { useWallets } from "@/lib/circle/hooks";
 
+interface VaultConfig {
+  address: `0x${string}`;
+  name: string;
+  blockchain: string;
+  chainId: number;
+}
+
 interface VaultActionModalProps {
   isOpen: boolean;
   onClose: () => void;
   action: "deposit" | "withdraw";
+  vaultConfig?: VaultConfig; // Optional - defaults to Arc vault
 }
 
 export function VaultActionModal({
   isOpen,
   onClose,
   action,
+  vaultConfig,
 }: VaultActionModalProps) {
   const { userSession } = useCircle();
   const { getWallets } = useWallets();
@@ -39,8 +48,16 @@ export function VaultActionModal({
   const [usdcBalance, setUsdcBalance] = useState("0");
   const [usdcAllowance, setUsdcAllowance] = useState("0");
 
-  const vaultAddress = CONTRACT_ADDRESSES.arc
-    .lowRiskLendingVault as `0x${string}`;
+  // Use provided vault config or default to Arc vault
+  const defaultVaultConfig: VaultConfig = {
+    address: CONTRACT_ADDRESSES.arc.lowRiskLendingVault,
+    name: "Arc Low Risk Lending Vault",
+    blockchain: CONTRACT_ADDRESSES.arc.blockchain,
+    chainId: CONTRACT_ADDRESSES.arc.chainId,
+  };
+
+  const activeVaultConfig = vaultConfig || defaultVaultConfig;
+  const vaultAddress = activeVaultConfig.address;
 
   const { getVaultData, loading: readLoading } = useCircleVaultRead(
     vaultAddress,
@@ -73,13 +90,18 @@ export function VaultActionModal({
       try {
         const wallets = await getWallets();
         if (wallets && wallets.length > 0) {
-          const arcWallet = wallets.find(
-            (w: any) => w.blockchain === "ARC-TESTNET"
+          // Find wallet matching the vault's blockchain
+          const targetWallet = wallets.find(
+            (w: any) => w.blockchain === activeVaultConfig.blockchain
           );
 
-          if (arcWallet) {
-            setWalletId(arcWallet.id);
-            setAddress(arcWallet.address);
+          if (targetWallet) {
+            setWalletId(targetWallet.id);
+            setAddress(targetWallet.address);
+          } else {
+            console.warn(
+              `No wallet found for blockchain: ${activeVaultConfig.blockchain}`
+            );
           }
         }
       } catch (error) {
@@ -90,7 +112,7 @@ export function VaultActionModal({
     if (isOpen) {
       loadWallet();
     }
-  }, [isOpen, userSession, getWallets]);
+  }, [isOpen, userSession, getWallets, activeVaultConfig.blockchain]);
 
   useEffect(() => {
     const loadData = async () => {
