@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   description:
     "Invest smarter with AI-powered DeFi strategies on Circle Smart Wallets",
   icons: {
-    icon: "/favicon.png",      // 👉 toma /public/favicon.png
+    icon: "/favicon.png",
     shortcut: "/favicon.png",
     apple: "/favicon.png",
   },
