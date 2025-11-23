@@ -347,16 +347,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-white pb-24">
-      {/* Header */}
-      <div className="bg-white px-4 pt-safe">
-        <div className="flex items-center justify-between py-4">
-          <div className="text-sm text-gray-600">9:41</div>
-          <div className="flex items-center space-x-1">
-            <div className="text-xs">📶 📡 🔋</div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="px-4 max-w-2xl mx-auto">
         {/* Portfolio Value */}
