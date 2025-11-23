@@ -3423,6 +3423,18 @@
     postcss "^8.4.41"
     tailwindcss "4.1.17"
 
+"@tanstack/query-core@5.90.10":
+  version "5.90.10"
+  resolved "https://registry.yarnpkg.com/@tanstack/query-core/-/query-core-5.90.10.tgz#2704b038277fb41e631f356e7428951b5354ed13"
+  integrity sha512-EhZVFu9rl7GfRNuJLJ3Y7wtbTnENsvzp+YpcAV7kCYiXni1v8qZh++lpw4ch4rrwC0u/EZRnBHIehzCGzwXDSQ==
+
+"@tanstack/react-query@^5.90.10":
+  version "5.90.10"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-query/-/react-query-5.90.10.tgz#dc2d4acbe1c06b708ccaeed43a26ad56bc5d1718"
+  integrity sha512-BKLss9Y8PQ9IUjPYQiv3/Zmlx92uxffUOX8ZZNoQlCIZBJPT5M+GOMQj7xislvVQ6l1BstBjcX0XB/aHfFYVNw==
+  dependencies:
+    "@tanstack/query-core" "5.90.10"
+
 "@tokenizer/inflate@^0.3.1":
   version "0.3.1"
   resolved "https://registry.yarnpkg.com/@tokenizer/inflate/-/inflate-0.3.1.tgz#f0b9162741e8e4c5fa0c56764a049355ad29e1f4"
@@ -11258,7 +11270,7 @@ viem@2.23.2:
     ox "0.6.7"
     ws "8.18.0"
 
-viem@>=2.29.0, viem@^2.1.1, viem@^2.21.26, viem@^2.21.45, viem@^2.27.2, viem@^2.31.7, viem@^2.39.3:
+viem@2.x, viem@>=2.29.0, viem@^2.1.1, viem@^2.21.26, viem@^2.21.45, viem@^2.27.2, viem@^2.31.7:
   version "2.39.3"
   resolved "https://registry.yarnpkg.com/viem/-/viem-2.39.3.tgz#45884cc27d3faced1fc1d293fc2d9018b8b0789f"
   integrity sha512-s11rPQRvUEdc5qHK3xT4fIk4qvgPAaLwaTFq+EbFlcJJD+Xn3R4mc9H6B6fquEiHl/mdsdbG/uKCnYpoNtHNHw==
