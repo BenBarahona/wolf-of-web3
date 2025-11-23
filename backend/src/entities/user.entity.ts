@@ -11,6 +11,7 @@ import { WalletPreference } from './wallet-preference.entity';
 import { TradingStrategy } from './trading-strategy.entity';
 import { UserActivity } from './user-activity.entity';
 import { Transaction } from './transaction.entity';
+import { UserPreferences } from './user-preferences.entity';
 
 @Entity('users')
 export class User {
@@ -63,4 +64,7 @@ export class User {
 
   @OneToMany(() => Transaction, (transaction) => transaction.user)
   transactions: Transaction[];
+
+  @OneToMany(() => UserPreferences, (preferences) => preferences.user)
+  userPreferences: UserPreferences[];
 }

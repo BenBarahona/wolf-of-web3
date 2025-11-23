@@ -14,6 +14,7 @@ export {
 } from './hooks';
 export { useActivities } from './useActivities';
 export { useTransactions } from './useTransactions';
+export { usePreferences } from './usePreferences';
 export type {
   CircleConfig,
   UserSession,
@@ -25,4 +26,5 @@ export type {
 } from './types';
 export type { Activity } from './useActivities';
 export type { Transaction } from './useTransactions';
+export type { UserPreferences, SavePreferencesData } from './usePreferences';
 

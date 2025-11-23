@@ -145,7 +145,6 @@ export class WalletController {
       userId: string;
       userToken: string;
       encryptionKey: string;
-      challengeId: string;
     };
   }> {
     try {
@@ -177,10 +176,9 @@ export class WalletController {
         circleUserId,
       );
 
-      // For login, we use restorePin to verify the existing PIN (not initializeUser)
-      const challengeId = await this.circleService.restorePin(
-        sessionData.userToken,
-      );
+      // For returning users, we don't need a challenge at login.
+      // PIN verification will happen automatically when they access
+      // protected resources (wallet details, transactions, etc.)
 
       await this.usersService.updateLastLogin(dbUser.id);
 
@@ -200,7 +198,6 @@ export class WalletController {
           userId: circleUserId,
           userToken: sessionData.userToken,
           encryptionKey: sessionData.encryptionKey,
-          challengeId: challengeId,
         },
       };
     } catch (error: any) {

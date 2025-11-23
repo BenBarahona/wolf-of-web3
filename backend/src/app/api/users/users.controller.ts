@@ -1,6 +1,9 @@
 import {
   Controller,
   Get,
+  Post,
+  Put,
+  Body,
   Headers,
   HttpException,
   HttpStatus,
@@ -8,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { UsersService } from '../../../services/users/users.service';
+import { UserPreferencesService } from '../../../services/users/user-preferences.service';
 import { CircleService } from '../../../services/circle/circle/circle.service';
 import { TransactionsService } from '../../../services/transactions/transactions.service';
 
@@ -17,6 +21,7 @@ export class UsersController {
 
   constructor(
     private readonly usersService: UsersService,
+    private readonly userPreferencesService: UserPreferencesService,
     private readonly circleService: CircleService,
     private readonly transactionsService: TransactionsService,
   ) {}
@@ -157,6 +162,195 @@ export class UsersController {
         {
           success: false,
           message: error.message || 'Failed to get transactions',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('preferences')
+  async savePreferences(
+    @Headers('x-user-token') userToken: string,
+    @Body() body: {
+      investmentPreferences?: string[];
+      timeHorizon?: string;
+      riskPreference?: string;
+      selectedStrategy?: string;
+    },
+  ) {
+    try {
+      if (!userToken) {
+        throw new HttpException(
+          'User token is required',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      let circleUserId: string;
+      try {
+        const tokenParts = userToken.split('.');
+        if (tokenParts.length !== 3) {
+          throw new Error('Invalid JWT format');
+        }
+        
+        const payload = JSON.parse(
+          Buffer.from(tokenParts[1], 'base64').toString('utf-8')
+        );
+        
+        circleUserId = payload.sub;
+        
+        if (!circleUserId) {
+          throw new Error('No sub claim in token');
+        }
+      } catch (decodeError: any) {
+        this.logger.error('Failed to decode user token:', decodeError.message);
+        throw new HttpException('Invalid user token', HttpStatus.UNAUTHORIZED);
+      }
+
+      const dbUser = await this.usersService.findByCircleUserId(circleUserId);
+      if (!dbUser) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      const preferences = await this.userPreferencesService.createOrUpdate({
+        userId: dbUser.id,
+        ...body,
+      });
+
+      return {
+        success: true,
+        data: preferences,
+      };
+    } catch (error: any) {
+      this.logger.error('Error saving preferences:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to save preferences',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('preferences')
+  async getPreferences(@Headers('x-user-token') userToken: string) {
+    try {
+      if (!userToken) {
+        throw new HttpException(
+          'User token is required',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      let circleUserId: string;
+      try {
+        const tokenParts = userToken.split('.');
+        if (tokenParts.length !== 3) {
+          throw new Error('Invalid JWT format');
+        }
+        
+        const payload = JSON.parse(
+          Buffer.from(tokenParts[1], 'base64').toString('utf-8')
+        );
+        
+        circleUserId = payload.sub;
+        
+        if (!circleUserId) {
+          throw new Error('No sub claim in token');
+        }
+      } catch (decodeError: any) {
+        this.logger.error('Failed to decode user token:', decodeError.message);
+        throw new HttpException('Invalid user token', HttpStatus.UNAUTHORIZED);
+      }
+
+      const dbUser = await this.usersService.findByCircleUserId(circleUserId);
+      if (!dbUser) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      const preferences = await this.userPreferencesService.findByUserId(dbUser.id);
+
+      return {
+        success: true,
+        data: preferences,
+      };
+    } catch (error: any) {
+      this.logger.error('Error getting preferences:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to get preferences',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put('preferences/complete-onboarding')
+  async completeOnboarding(@Headers('x-user-token') userToken: string) {
+    try {
+      if (!userToken) {
+        throw new HttpException(
+          'User token is required',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      let circleUserId: string;
+      try {
+        const tokenParts = userToken.split('.');
+        if (tokenParts.length !== 3) {
+          throw new Error('Invalid JWT format');
+        }
+        
+        const payload = JSON.parse(
+          Buffer.from(tokenParts[1], 'base64').toString('utf-8')
+        );
+        
+        circleUserId = payload.sub;
+        
+        if (!circleUserId) {
+          throw new Error('No sub claim in token');
+        }
+      } catch (decodeError: any) {
+        this.logger.error('Failed to decode user token:', decodeError.message);
+        throw new HttpException('Invalid user token', HttpStatus.UNAUTHORIZED);
+      }
+
+      const dbUser = await this.usersService.findByCircleUserId(circleUserId);
+      if (!dbUser) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Mark onboarding as completed
+      const preferences = await this.userPreferencesService.completeOnboarding(dbUser.id);
+
+      return {
+        success: true,
+        data: preferences,
+      };
+    } catch (error: any) {
+      this.logger.error('Error completing onboarding:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || 'Failed to complete onboarding',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

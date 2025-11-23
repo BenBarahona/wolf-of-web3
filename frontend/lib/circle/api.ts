@@ -54,7 +54,6 @@ export async function loginUser(email: string): Promise<{
   userId: string;
   userToken: string;
   encryptionKey: string;
-  challengeId: string;
 }> {
   const response = await fetch(`${API_BASE_URL}/api/wallet/user/login`, {
     method: 'POST',

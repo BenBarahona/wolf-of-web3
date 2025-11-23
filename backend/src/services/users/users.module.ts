@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
-import { User, WalletPreference, TradingStrategy, UserActivity } from '../../entities';
+import { UserPreferencesService } from './user-preferences.service';
+import { User, WalletPreference, TradingStrategy, UserActivity, UserPreferences } from '../../entities';
 
 @Module({
   imports: [
@@ -10,10 +11,11 @@ import { User, WalletPreference, TradingStrategy, UserActivity } from '../../ent
       WalletPreference,
       TradingStrategy,
       UserActivity,
+      UserPreferences,
     ]),
   ],
-  providers: [UsersService],
-  exports: [UsersService, TypeOrmModule],
+  providers: [UsersService, UserPreferencesService],
+  exports: [UsersService, UserPreferencesService, TypeOrmModule],
 })
 export class UsersModule {}
 
