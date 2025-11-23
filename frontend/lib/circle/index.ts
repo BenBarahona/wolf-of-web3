@@ -15,6 +15,7 @@ export {
 export { useActivities } from './useActivities';
 export { useTransactions } from './useTransactions';
 export { usePreferences } from './usePreferences';
+export { useContractTransaction } from './useContractTransaction';
 export type {
   CircleConfig,
   UserSession,

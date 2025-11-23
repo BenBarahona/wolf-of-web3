@@ -70,7 +70,8 @@ export default function StrategySelectionPage() {
       JSON.stringify(allPreferences)
     );
 
-    router.push("/wallet-setup");
+    // Wallet is already created during signup, go directly to dashboard
+    router.push("/dashboard");
   };
 
   if (isLoading) {

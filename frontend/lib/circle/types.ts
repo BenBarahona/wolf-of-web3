@@ -24,6 +24,8 @@ export interface ChallengeResult {
   status: string;
   data?: {
     signature?: string;
+    transactionHash?: string;
+    [key: string]: any;
   };
 }
 

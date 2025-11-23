@@ -516,7 +516,7 @@ export class CircleService {
     functionName: string,
     args: any[],
     value: string = '0',
-  ): Promise<{ challengeId: string; transactionId: string }> {
+  ): Promise<{ challengeId: string; transactionId: string; idempotencyKey: string }> {
     try {
       this.logger.log(
         `Creating contract execution transaction: ${contractAddress}.${functionName}`,
@@ -553,11 +553,21 @@ export class CircleService {
       );
 
       const data = response.data.data;
-      this.logger.log(`Contract execution transaction created: ${data.id}`);
+      
+      // Log the full response to understand the structure
+      this.logger.debug(`Full Circle API response:`, JSON.stringify(data, null, 2));
+      
+      // Note: Circle doesn't return a transaction ID immediately
+      // The transaction will be created after the user completes the challenge
+      // We return the challengeId and idempotencyKey for reference
+      this.logger.log(`Contract execution challenge created`);
+      this.logger.log(`Challenge ID: ${data.challengeId}`);
+      this.logger.log(`Idempotency Key: ${idempotencyKey}`);
 
       return {
         challengeId: data.challengeId,
-        transactionId: data.id,
+        transactionId: idempotencyKey, // This is just a reference, not a real Circle transaction ID
+        idempotencyKey: idempotencyKey,
       };
     } catch (error: any) {
       this.logger.error(
@@ -566,6 +576,39 @@ export class CircleService {
       );
       throw new Error(
         `Failed to create contract execution: ${error.response?.data?.message || error.message}`,
+      );
+    }
+  }
+
+  async getTransactionStatus(
+    userToken: string,
+    transactionId: string,
+  ): Promise<any> {
+    try {
+      this.logger.log(`Getting transaction status: ${transactionId}`);
+
+      const response = await axios.get(
+        `${this.baseUrl}/user/transactions/${transactionId}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+            'X-User-Token': userToken,
+          },
+        },
+      );
+
+      const data = response.data.data;
+      this.logger.debug(`Transaction status:`, JSON.stringify(data, null, 2));
+
+      return data;
+    } catch (error: any) {
+      this.logger.error(
+        'Error getting transaction status:',
+        error.response?.data || error,
+      );
+      throw new Error(
+        `Failed to get transaction status: ${error.response?.data?.message || error.message}`,
       );
     }
   }

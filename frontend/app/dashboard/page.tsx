@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useCircle, useWallets, useWalletBalance } from "@/lib/circle";
+import {
+  useCircle,
+  useWallets,
+  useWalletBalance,
+  usePreferences,
+} from "@/lib/circle";
 import { useActivities, Activity } from "@/lib/circle/useActivities";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
@@ -50,6 +55,7 @@ export default function Dashboard() {
   const { getWallets } = useWallets();
   const { getBalance } = useWalletBalance();
   const { getActivities } = useActivities();
+  const { savePreferences, completeOnboarding } = usePreferences();
 
   const [wallets, setWallets] = useState<any[]>([]);
   const [balances, setBalances] = useState<{ [walletId: string]: any[] }>({});
@@ -208,6 +214,39 @@ export default function Dashboard() {
     },
   };
 
+  // Save onboarding preferences if they exist
+  useEffect(() => {
+    const saveOnboardingPreferences = async () => {
+      if (!userSession?.userToken) return;
+
+      try {
+        const prefsJson = sessionStorage.getItem("onboardingPreferences");
+        if (prefsJson) {
+          const prefs = JSON.parse(prefsJson);
+          await savePreferences(userSession.userToken, prefs);
+          await completeOnboarding(userSession.userToken);
+
+          // Clear session storage after saving
+          sessionStorage.removeItem("onboardingPreferences");
+          sessionStorage.removeItem("investmentPreferences");
+          sessionStorage.removeItem("timeHorizon");
+          sessionStorage.removeItem("riskPreference");
+          sessionStorage.removeItem("selectedStrategy");
+          sessionStorage.removeItem("signupEmail");
+          sessionStorage.removeItem("signupUsername");
+
+          console.log("Onboarding preferences saved successfully");
+        }
+      } catch (err) {
+        console.error("Failed to save preferences:", err);
+      }
+    };
+
+    if (userSession?.userToken) {
+      saveOnboardingPreferences();
+    }
+  }, [userSession?.userToken, savePreferences, completeOnboarding]);
+
   useEffect(() => {
     const loadData = async () => {
       if (!userSession) {
@@ -347,16 +386,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-white pb-24">
-      {/* Header */}
-      <div className="bg-white px-4 pt-safe">
-        <div className="flex items-center justify-between py-4">
-          <div className="text-sm text-gray-600">9:41</div>
-          <div className="flex items-center space-x-1">
-            <div className="text-xs">📶 📡 🔋</div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="px-4 max-w-2xl mx-auto">
         {/* Portfolio Value */}

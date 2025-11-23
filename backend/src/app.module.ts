@@ -14,6 +14,7 @@ import { PaymentsModule } from './app/api/payments/payments.module';
 import { WalletModule } from './app/api/wallet/wallet.module';
 import { UsersModule } from './services/users/users.module';
 import { UsersApiModule } from './app/api/users/users.module';
+import { BridgeApiModule } from './app/api/bridge/bridge.module';
 import * as path from 'path';
 
 @Module({
@@ -62,6 +63,7 @@ import * as path from 'path';
     PaymentsModule,
     WalletModule,
     UsersApiModule,
+    BridgeApiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
