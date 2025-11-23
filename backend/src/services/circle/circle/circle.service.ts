@@ -254,6 +254,22 @@ export class CircleService {
         `Creating ${accountType} wallet on ${blockchain} blockchain`,
       );
 
+      try {
+        const userStatus = await this.getUserStatus(userToken);
+        this.logger.log(`User status before wallet creation:`, JSON.stringify({
+          status: userStatus.status,
+          pinStatus: userStatus.pinStatus,
+        }));
+
+        if (userStatus.pinStatus !== 'ENABLED') {
+          throw new Error(
+            `User PIN is not enabled. Current status: ${userStatus.pinStatus}. Please complete PIN setup first.`,
+          );
+        }
+      } catch (statusError: any) {
+        this.logger.error('Error checking user status:', statusError);
+      }
+
       const walletSetResponse = await axios.post(
         `${this.baseUrl}/user/wallets/sets`,
         {
@@ -301,13 +317,27 @@ export class CircleService {
         state: wallet.state,
       };
     } catch (error: any) {
-      this.logger.error(
-        'Error creating wallet:',
-        error.response?.data || error,
-      );
-      throw new Error(
-        `Failed to create wallet: ${error.response?.data?.message || error.message}`,
-      );
+      // Enhanced error logging
+      this.logger.error('Error creating wallet:', {
+        message: error.message,
+        code: error.response?.data?.code,
+        apiMessage: error.response?.data?.message,
+        status: error.response?.status,
+        fullError: error.response?.data,
+      });
+
+      // Provide more helpful error messages
+      let errorMessage = 'Failed to create wallet';
+      
+      if (error.response?.data?.code === -1 && error.response?.data?.message === 'Resource not found') {
+        errorMessage = 'User account not ready for wallet creation. Please ensure PIN setup is complete and try again.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      throw new Error(errorMessage);
     }
   }
 
